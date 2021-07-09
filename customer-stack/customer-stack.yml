@@ -1,0 +1,863 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  s3BucketName:
+    Type: String
+    Description: "Name of the S3 bucket to be created"
+    AllowedPattern: ".+"
+  snowflakeSecretArn:
+    Type: String
+    Description: "ARN of the AWS Secret containing the Snowflake login information"
+    AllowedPattern: ".+"
+  snowflakeRole:
+    Type: String
+    Description: "Snowflake Role with permissions to create Storage and API Integrations"
+    Default: "ACCOUNTADMIN"
+    AllowedPattern: ".+"
+  apiGatewayName:
+    Type: "String"
+    AllowedPattern: "^[a-zA-Z0-9]+[-a-zA-Z0-9-]+[-a-zA-Z0-9]+$"
+    Default: "ext-func-api"
+    Description: API Gateway name
+  apiGatewayStageName:
+    Type: "String"
+    AllowedPattern: "^[-a-zA-Z0-9]+$"
+    Default: "ext-func-stage"
+    Description: "API deployment stage"
+  codeBucket:
+    Type: String
+    Description: "Name of the S3 bucket containing the layer code for Snowflake driver"
+    Default: "sagemaker-sample-files"
+    AllowedPattern: ".+"
+  pathToLayerCode:
+    Type: String
+    Description: "Path within codeBucket where the layer code is (example: libraries/snowflake-connector-python-0.1.zip)"
+    Default: "libraries/snowflake-connector-python-0.1.zip"
+    AllowedPattern: ".+"
+  pathToLambdaCode:
+    Type: String
+    Description: "Path within codeBucket where the lambda code is (example: libraries/create-resources-0.1.zip)"
+    Default: "libraries/create-resources-0.1.zip"
+    AllowedPattern: ".+"
+Resources:
+  KMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: key-access-for-account
+        Statement:
+        - Sid: Enable IAM User Permissions
+          Effect: Allow
+          Principal:
+            AWS:
+              Fn::Join:
+              - ''
+              - - 'arn:aws:iam::'
+                - Ref: AWS::AccountId
+                - :root
+          Action: kms:*
+          Resource: '*'
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Ref s3BucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'aws:kms'
+              KMSMasterKeyID: !GetAtt KMSKey.Arn
+            BucketKeyEnabled: true
+      VersioningConfiguration:
+        Status: Enabled
+  SnowflakeAutoMLExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Description: IAM Role used to execute the AutoML jobs from Snowflake
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - sagemaker.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonSageMakerFullAccess'
+      Policies:
+        - PolicyName: s3-permissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:DeleteObject'
+                  - 's3:ListBucket'
+                Resource:
+                  - !Join
+                    - ''
+                    - - !GetAtt S3Bucket.Arn
+                      - '/*'
+        - PolicyName: kms-permissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kms:CreateGrant'
+                  - "kms:Decrypt"
+                  - "kms:DescribeKey"
+                  - "kms:Encrypt"
+                  - "kms:GenerateDataKey*"
+                  - "kms:ReEncrypt*"
+                Resource:
+                  - !Join
+                    - ":"
+                    - - "arn"
+                      - !Ref AWS::Partition
+                      - "kms"
+                      - !Ref AWS::Region
+                      - !Ref AWS::AccountId
+                      - "alias/aws/secretsmanager"
+                  - !GetAtt KMSKey.Arn
+        - PolicyName: secrets-permissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:GetSecretValue'
+                Resource: !Ref snowflakeSecretArn
+  SnowflakeAPIGatewayExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Description: IAM Role used to call SageMaker from API Gateway for SnowFlake
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'sagemaker:InvokeEndpoint'
+                  - 'sagemaker:CreateAutoMLJob'
+                  - 'sagemaker:DeleteEndpoint'
+                  - 'sagemaker:CreateEndpoint'
+                  - 'sagemaker:DescribeAutoMLJob'
+                  - 'sagemaker:DescribeEndpoint'
+                Resource: '*'
+        - PolicyName: passRoleToExecute
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'iam:PassRole'
+                Resource: !GetAtt "SnowflakeAutoMLExecutionRole.Arn"
+        - PolicyName: kms-permissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kms:CreateGrant'
+                  - "kms:Decrypt"
+                  - "kms:DescribeKey"
+                  - "kms:Encrypt"
+                  - "kms:GenerateDataKey*"
+                  - "kms:ReEncrypt*"
+                Resource:
+                  - !Join
+                    - ":"
+                    - - "arn"
+                      - !Ref AWS::Partition
+                      - "kms"
+                      - !Ref AWS::Region
+                      - !Ref AWS::AccountId
+                      - "alias/aws/secretsmanager"
+                  - !GetAtt KMSKey.Arn
+  CopyZipsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: IAM Role used to copy Snowflake libraries form the shared repository
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/CloudWatchLogsFullAccess'
+      Policies:
+        - PolicyName: kms-permissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kms:CreateGrant'
+                  - "kms:Decrypt"
+                  - "kms:DescribeKey"
+                  - "kms:Encrypt"
+                  - "kms:GenerateDataKey*"
+                  - "kms:ReEncrypt*"
+                Resource:
+                  - !Join
+                    - ":"
+                    - - "arn"
+                      - !Ref AWS::Partition
+                      - "kms"
+                      - !Ref AWS::Region
+                      - !Ref AWS::AccountId
+                      - "alias/aws/secretsmanager"
+                  - !GetAtt KMSKey.Arn
+        - PolicyName: s3-dest-permissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                Resource:
+                  - !Join
+                    - ''
+                    - - !GetAtt S3Bucket.Arn
+                      - '/*'
+        - PolicyName: s3-src-permissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:ListBucket'
+                Resource: '*'
+  CreateSnowflakeResourcesExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: IAM Role used to create Snowflake resources from the CloudFormation template
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/CloudWatchLogsFullAccess'
+      Policies:
+        - PolicyName: kms-permissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kms:CreateGrant'
+                  - "kms:Decrypt"
+                  - "kms:DescribeKey"
+                  - "kms:Encrypt"
+                  - "kms:GenerateDataKey*"
+                  - "kms:ReEncrypt*"
+                Resource:
+                  - !Join
+                    - ":"
+                    - - "arn"
+                      - !Ref AWS::Partition
+                      - "kms"
+                      - !Ref AWS::Region
+                      - !Ref AWS::AccountId
+                      - "alias/aws/secretsmanager"
+                  - !GetAtt KMSKey.Arn
+        - PolicyName: secrets-permissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:GetSecretValue'
+                Resource: !Ref snowflakeSecretArn
+        - PolicyName: update-iam-role
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'iam:UpdateAssumeRolePolicy'
+                Resource:
+                  - !GetAtt SnowflakeAPIGatewayExecutionRole.Arn
+                  - !GetAtt SnowflakeAutoMLExecutionRole.Arn
+  SnowflakeApiGateway:
+    Type: "AWS::ApiGateway::RestApi"
+    DependsOn: SnowflakeAPIGatewayExecutionRole
+    Properties:
+      Name: !Ref apiGatewayName
+      Description: "Snowflake external functions Gateway"
+      Policy: !Sub
+        - '{ "Version": "2012-10-17", "Statement": [ {  "Effect": "Allow", "Principal": { "AWS": "arn:${AWS::Partition}:sts::${AWS::AccountId}:assumed-role/${SnowflakeAPIGatewayExecutionRole}/snowflake" }, "Action": "execute-api:Invoke", "Resource": "${resourceArn}" }  ] }'
+        - resourceArn: !Join [ "", [ "execute-api:/", "*" ] ]
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+  SnowflakeApiGatewayDeployment:
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn:
+      - "CreateModelPostMethod"
+      - "PredictOutcomePostMethod"
+      - "DeleteEndpointPostMethod"
+      - "CreateEndpointPostMethod"
+      - "DescribeModelPostMethod"
+      - "DescribeEndpointPostMethod"
+    Properties:
+      RestApiId: !Ref "SnowflakeApiGateway"
+      StageName: !Ref apiGatewayStageName
+  RootApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref SnowflakeApiGateway
+      ParentId: !GetAtt
+            - SnowflakeApiGateway
+            - RootResourceId
+      PathPart: sagemaker
+  CreateModelApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref SnowflakeApiGateway
+      ParentId: !Ref RootApiResource
+      PathPart: createmodel
+  PredictOutcomeApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref SnowflakeApiGateway
+      ParentId: !Ref RootApiResource
+      PathPart: predictoutcome
+  PredictOutcomeEndpointNameApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref SnowflakeApiGateway
+      ParentId: !Ref PredictOutcomeApiResource
+      PathPart: "{endpointName}"
+  DeleteEndpointApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref SnowflakeApiGateway
+      ParentId: !Ref RootApiResource
+      PathPart: deleteendpoint
+  CreateEndpointApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref SnowflakeApiGateway
+      ParentId: !Ref RootApiResource
+      PathPart: createendpoint
+  DescribeModelApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref SnowflakeApiGateway
+      ParentId: !Ref RootApiResource
+      PathPart: describemodel
+  DescribeEndpointApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref SnowflakeApiGateway
+      ParentId: !Ref RootApiResource
+      PathPart: describeendpoint
+  CreateModelPostMethod:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      AuthorizationType: "AWS_IAM"
+      HttpMethod: "POST"
+      Integration:
+        IntegrationHttpMethod: "POST"
+        Type: "AWS"
+        Credentials: !GetAtt SnowflakeAPIGatewayExecutionRole.Arn
+        Uri:
+          Fn::Join:
+            - ":"
+            - - "arn"
+              - Ref: AWS::Partition
+              - "apigateway"
+              - Ref: AWS::Region
+              - "sagemaker:action/CreateAutoMLJob"
+        RequestParameters:
+          integration.request.header.X-Amz-Target: "'SageMaker.CreateAutoMLJob'"
+          integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
+        PassthroughBehavior: NEVER
+        RequestTemplates:
+          application/json: !Sub
+            - |
+              {
+                "AutoMLJobConfig": {
+                  "CompletionCriteria": {
+                    "MaxAutoMLJobRuntimeInSeconds": $input.json('$.MaxTime')
+                  }
+                },
+                #set( $model-name = $input.json('$.ModelName').replaceAll('\"','') )
+                #set( $auto-ml-job-suffix = '-job' )
+                #set( $auto-ml-job-datasets-suffix = '/datasets/' )
+                #set( $auto-ml-job-name = "$model-name$auto-ml-job-suffix" )
+                #set( $auto-ml-job-datasets-path = "$auto-ml-job-name$auto-ml-job-datasets-suffix" )
+                "AutoMLJobName": "$auto-ml-job-name",
+                "ModelDeployConfig": $input.json('$.ModelDeployConfig'),
+                "AutoMLJobObjective": {
+                  "MetricName": $input.json('$.ObjectiveMetric')
+                },
+                "InputDataConfig": [
+                  {
+                    "TargetAttributeName": $input.json('$.TargetColumn'),
+                    "AutoMLDatasetDefinition": {
+                      "AutoMLSnowflakeDatasetDefinition": {
+                        "Warehouse": $input.json('$.Warehouse'),
+                        "Database": $input.json('$.Database'),
+                        "Schema": $input.json('$.Schema'),
+                        "TableName": $input.json('$.TableName'),
+                        "SnowflakeRole": "${snowflakeRole}",
+                        "SecretArn": "${snowflakeSecretArn}",
+                        "OutputS3Uri": "${outputS3Uri}$auto-ml-job-datasets-path",
+                        "StorageIntegration": "${AWS::StackName}_${AWS::Region}_storage_integration"
+                      }
+                    }
+                  }
+                ],
+                "OutputDataConfig": {
+                  "S3OutputPath": "${outputS3Uri}"
+                },
+                "ProblemType": $input.json('$.ProblemType'),
+                "RoleArn": "${RoleArn}"
+              }
+            - RoleArn: !GetAtt "SnowflakeAutoMLExecutionRole.Arn"
+              outputS3Uri:
+                Fn::Join:
+                  - ""
+                  - - "s3://"
+                    - Ref: s3BucketName
+                    - "/output/"
+        IntegrationResponses:
+          - StatusCode: 200
+            SelectionPattern: '2..'
+            ResponseTemplates:
+              application/json: |
+                {
+                  "Message": "Model training started"
+                }
+          - StatusCode: 400
+            SelectionPattern: '4..'
+            ResponseTemplates:
+              application/json: |
+                $input.body
+          - StatusCode: 500
+            SelectionPattern: '5..'
+            ResponseTemplates:
+              application/json: |
+                $input.body
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 400
+        - StatusCode: 500
+      ResourceId: !Ref "CreateModelApiResource"
+      RestApiId: !Ref "SnowflakeApiGateway"
+  PredictOutcomePostMethod:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      AuthorizationType: "AWS_IAM"
+      HttpMethod: "POST"
+      RequestParameters:
+        method.request.path.endpointName: true
+      Integration:
+        IntegrationHttpMethod: "POST"
+        Type: "AWS"
+        RequestParameters:
+          integration.request.path.endpointName: method.request.path.endpointName
+          integration.request.header.Content-Type: "'text/csv'"
+          integration.request.header.Accept: "'application/json'"
+        Credentials: !GetAtt SnowflakeAPIGatewayExecutionRole.Arn
+        PassthroughBehavior: NEVER
+        Uri:
+          Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - ":apigateway:"
+              - Ref: AWS::Region
+              - :runtime.sagemaker:path/endpoints/{endpointName}
+              - /invocations
+        RequestTemplates:
+          application/json: $input.body
+        IntegrationResponses:
+          - StatusCode: 200
+            SelectionPattern: '2..'
+            ResponseTemplates:
+              application/json: $input.body
+          - StatusCode: 400
+            SelectionPattern: '4..'
+            ResponseTemplates:
+              application/json: |
+                $input.body
+          - StatusCode: 500
+            SelectionPattern: '5..'
+            ResponseTemplates:
+              application/json: |
+                $input.body
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 400
+        - StatusCode: 500
+      ResourceId: !Ref "PredictOutcomeEndpointNameApiResource"
+      RestApiId: !Ref "SnowflakeApiGateway"
+  DeleteEndpointPostMethod:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      AuthorizationType: "AWS_IAM"
+      HttpMethod: "POST"
+      Integration:
+        IntegrationHttpMethod: "POST"
+        Type: "AWS"
+        Credentials: !GetAtt SnowflakeAPIGatewayExecutionRole.Arn
+        Uri:
+          Fn::Join:
+            - ":"
+            - - "arn"
+              - Ref: AWS::Partition
+              - "apigateway"
+              - Ref: AWS::Region
+              - "sagemaker:action/DeleteEndpoint"
+        RequestParameters:
+          integration.request.header.X-Amz-Target: "'SageMaker.DeleteEndpoint'"
+          integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
+        PassthroughBehavior: NEVER
+        RequestTemplates:
+          application/json: |
+            {
+              "EndpointName": $input.json('$.EndpointName')
+            }
+        IntegrationResponses:
+          - StatusCode: 200
+            SelectionPattern: '2..'
+            ResponseTemplates:
+              application/json: |
+                {
+                  "Message": "Deleting endpoint"
+                }
+          - StatusCode: 400
+            SelectionPattern: '4..'
+            ResponseTemplates:
+              application/json: |
+                $input.body
+          - StatusCode: 500
+            SelectionPattern: '5..'
+            ResponseTemplates:
+              application/json: |
+                $input.body
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 400
+        - StatusCode: 500
+      ResourceId: !Ref "DeleteEndpointApiResource"
+      RestApiId: !Ref "SnowflakeApiGateway"
+  CreateEndpointPostMethod:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      AuthorizationType: "AWS_IAM"
+      HttpMethod: "POST"
+      Integration:
+        IntegrationHttpMethod: "POST"
+        Type: "AWS"
+        Credentials: !GetAtt SnowflakeAPIGatewayExecutionRole.Arn
+        Uri:
+          Fn::Join:
+            - ":"
+            - - "arn"
+              - Ref: AWS::Partition
+              - "apigateway"
+              - Ref: AWS::Region
+              - "sagemaker:action/CreateEndpoint"
+        RequestParameters:
+          integration.request.header.X-Amz-Target: "'SageMaker.CreateEndpoint'"
+          integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
+        PassthroughBehavior: NEVER
+        RequestTemplates:
+          application/json: |
+            {
+              "EndpointConfigName": $input.json('$.EndpointConfigName'),
+              "EndpointName": $input.json('$.EndpointName'),
+              "DeletionCondition": $input.json('$.DeletionCondition')
+            }
+        IntegrationResponses:
+          - StatusCode: 200
+            SelectionPattern: '2..'
+            ResponseTemplates:
+              application/json: |
+                {
+                  "Message": "Creating endpoint"
+                }
+          - StatusCode: 400
+            SelectionPattern: '4..'
+            ResponseTemplates:
+              application/json: |
+                $input.body
+          - StatusCode: 500
+            SelectionPattern: '5..'
+            ResponseTemplates:
+              application/json: |
+                $input.body
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 400
+        - StatusCode: 500
+      ResourceId: !Ref "CreateEndpointApiResource"
+      RestApiId: !Ref "SnowflakeApiGateway"
+  DescribeModelPostMethod:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      AuthorizationType: "AWS_IAM"
+      HttpMethod: "POST"
+      Integration:
+        IntegrationHttpMethod: "POST"
+        Type: "AWS"
+        Credentials: !GetAtt SnowflakeAPIGatewayExecutionRole.Arn
+        Uri:
+          Fn::Join:
+            - ":"
+            - - "arn"
+              - Ref: AWS::Partition
+              - "apigateway"
+              - Ref: AWS::Region
+              - "sagemaker:action/DescribeAutoMLJob"
+        RequestParameters:
+          integration.request.header.X-Amz-Target: "'SageMaker.DescribeAutoMLJob'"
+          integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
+        PassthroughBehavior: NEVER
+        RequestTemplates:
+          application/json: |
+            {
+              #set( $model-name = $input.json('$.ModelName').replaceAll('\"','') )
+              #set( $auto-ml-job-suffix = '-job' )
+              #set( $auto-ml-job-name = "$model-name$auto-ml-job-suffix" )
+              "AutoMLJobName": "$auto-ml-job-name"
+            }
+        IntegrationResponses:
+          - StatusCode: 200
+            SelectionPattern: '2..'
+            ResponseTemplates:
+              application/json: |
+                {
+                  "ObjectiveMetric": $input.json('$.BestCandidate.FinalAutoMLJobObjectiveMetric.MetricName'),
+                  "BestObjectiveMetric": $input.json('$.BestCandidate.FinalAutoMLJobObjectiveMetric.Value'),
+                  "JobStatus": $input.json('$.AutoMLJobStatus'),
+                  "JobStatusDetails": $input.json('$.AutoMLJobSecondaryStatus'),
+                  "FailureReason": $input.json('$.ErrorInfo')
+                }
+          - StatusCode: 400
+            SelectionPattern: '4..'
+            ResponseTemplates:
+              application/json: |
+                $input.body
+          - StatusCode: 500
+            SelectionPattern: '5..'
+            ResponseTemplates:
+              application/json: |
+                $input.body
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 400
+        - StatusCode: 500
+      ResourceId: !Ref "DescribeModelApiResource"
+      RestApiId: !Ref "SnowflakeApiGateway"
+  DescribeEndpointPostMethod:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      AuthorizationType: "AWS_IAM"
+      HttpMethod: "POST"
+      Integration:
+        IntegrationHttpMethod: "POST"
+        Type: "AWS"
+        Credentials: !GetAtt SnowflakeAPIGatewayExecutionRole.Arn
+        Uri:
+          Fn::Join:
+            - ":"
+            - - "arn"
+              - Ref: AWS::Partition
+              - "apigateway"
+              - Ref: AWS::Region
+              - "sagemaker:action/DescribeEndpoint"
+        RequestParameters:
+          integration.request.header.X-Amz-Target: "'SageMaker.DescribeEndpoint'"
+          integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
+        PassthroughBehavior: NEVER
+        RequestTemplates:
+          application/json: |
+            {
+              "EndpointName": $input.json('$.EndpointName')
+            }
+        IntegrationResponses:
+          - StatusCode: 200
+            SelectionPattern: '2..'
+            ResponseTemplates:
+              application/json: |
+                {
+                  "EndpointStatus": $input.json('$.EndpointStatus')
+                  "FailureReason": $input.json('$.FailureReason')
+                }
+          - StatusCode: 400
+            SelectionPattern: '4..'
+            ResponseTemplates:
+              application/json: |
+                $input.body
+          - StatusCode: 500
+            SelectionPattern: '5..'
+            ResponseTemplates:
+              application/json: |
+                $input.body
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 400
+        - StatusCode: 500
+      ResourceId: !Ref "DescribeEndpointApiResource"
+      RestApiId: !Ref "SnowflakeApiGateway"
+  CopyZipsLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import logging
+          import os
+          import requests
+          import time
+
+          EMPTY_RESPONSE_DATA = {}
+          FAILED = 'FAILED'
+          SUCCESS = 'SUCCESS'
+
+          logger = logging.getLogger(__name__)
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+            logger.info('Starting the copy of shared libraries')
+            # Delete
+            if event['RequestType'] == 'Delete':
+                sendResponse(event, context, SUCCESS, EMPTY_RESPONSE_DATA)
+                return
+
+            try:
+                s3_destination_bucket_name = event['ResourceProperties']['DestBucket']
+                s3_source_bucket_name = event['ResourceProperties']['SourceBucket']
+                object_keys = event['ResourceProperties']['ObjectKeys']
+
+                copy_objects(s3_source_bucket_name, s3_destination_bucket_name, object_keys)
+                logger.info("Shared files copied successfully")
+
+                sendResponse(event, context, SUCCESS, EMPTY_RESPONSE_DATA)
+                logger.info('Copy of shared libraries finished')
+            except:
+                logger.exception("There was a problem copying the files")
+                sendResponse(event, context, FAILED, EMPTY_RESPONSE_DATA)
+                return
+
+          def copy_objects(s3_source_bucket_name, s3_destination_bucket_name, object_keys):
+                s3 = boto3.resource('s3')
+                destination_bucket = s3.Bucket(s3_destination_bucket_name)
+
+                for object_key in object_keys:
+                  copy_object(s3_source_bucket_name, destination_bucket, object_key)
+
+          def copy_object(s3_source_bucket_name, destination_bucket, object_key):
+              logger.info('Copying object key: ' + object_key)
+              copy_source = {
+                  'Bucket': s3_source_bucket_name,
+                  'Key': object_key
+              }
+              destination_bucket.copy(copy_source, object_key)
+
+          def sendResponse(event, context, responseStatus, responseData):
+              responseBody = {'Status': responseStatus,
+                              'Reason': 'See the details in CloudWatch Log Stream: ' + context.log_stream_name,
+                              'PhysicalResourceId': context.log_stream_name,
+                              'StackId': event['StackId'],
+                              'RequestId': event['RequestId'],
+                              'LogicalResourceId': event['LogicalResourceId'],
+                              'Data': responseData}
+              req = requests.put(event['ResponseURL'], data=json.dumps(responseBody))
+              if req.status_code != 200:
+                  raise Exception('Received a non-200 HTTP response while sending response to CloudFormation.')
+              return
+      Handler: index.lambda_handler
+      Role: !GetAtt CopyZipsRole.Arn
+      Runtime: python3.7
+      Timeout: 600
+  CopyZips:
+    Type: Custom::CopyZips
+    DependsOn:
+      - S3Bucket
+      - CopyZipsRole
+    Properties:
+      ServiceToken: !GetAtt CopyZipsLambda.Arn
+      DestBucket: !Ref s3BucketName
+      SourceBucket: !Ref codeBucket
+      ObjectKeys:
+        - !Ref pathToLayerCode
+        - !Ref pathToLambdaCode
+  CreateSnowflakeResourcesLambdaLayer:
+    Type: AWS::Lambda::LayerVersion
+    DependsOn:
+      - CopyZips
+    Properties:
+      CompatibleRuntimes:
+        - python3.7
+      Content:
+        S3Bucket: !Ref s3BucketName
+        S3Key: !Ref pathToLayerCode
+      Description: 'Layer to download Snowflake driver'
+  CreateSnowflakeResourcesLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: !Ref s3BucketName
+        S3Key: !Ref pathToLambdaCode
+      Layers:
+            - Ref: CreateSnowflakeResourcesLambdaLayer
+      Handler: create-resources.lambda_handler
+      Role: !GetAtt CreateSnowflakeResourcesExecutionRole.Arn
+      Runtime: python3.7
+      Timeout: 600
+      Environment:
+        Variables:
+          ApiGatewayURL: !Sub "https://${SnowflakeApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${apiGatewayStageName}/sagemaker"
+          ApiGatewayRoleARN: !GetAtt SnowflakeAPIGatewayExecutionRole.Arn
+          ApiGatewayRoleName: !Ref SnowflakeAPIGatewayExecutionRole
+          AutoMLRoleARN: !GetAtt SnowflakeAutoMLExecutionRole.Arn
+          AutoMLRoleName: !Ref SnowflakeAutoMLExecutionRole
+          Region: !Sub "${AWS::Region}"
+          S3BucketName: !Ref s3BucketName
+          SecretArn: !Ref snowflakeSecretArn
+          SnowflakeRole: !Ref snowflakeRole
+          StackName: !Sub "${AWS::StackName}"
+  SnowflakeResources:
+    Type: Custom::SnowflakeResources
+    DependsOn:
+      - SnowflakeAPIGatewayExecutionRole
+      - SnowflakeAutoMLExecutionRole
+    Properties:
+      ServiceToken: !Sub
+        - "${lambdaArn}"
+        - lambdaArn: !GetAtt CreateSnowflakeResourcesLambda.Arn
