@@ -13,6 +13,14 @@ Parameters:
     Description: "Snowflake Role with permissions to create Storage and API Integrations"
     Default: "ACCOUNTADMIN"
     AllowedPattern: ".+"
+  snowflakeDatabaseName:
+    Type: String
+    Description: "Snowflake Database in which external functions will be created"
+    AllowedPattern: ".+"
+  snowflakeSchemaName:
+    Type: String
+    Description: "Snowflake Database Schema in which external functions will be created"
+    AllowedPattern: ".+"     
   apiGatewayName:
     Type: "String"
     AllowedPattern: "^[a-zA-Z0-9]+[-a-zA-Z0-9-]+[-a-zA-Z0-9]+$"
@@ -401,74 +409,14 @@ Resources:
         RequestParameters:
           integration.request.header.X-Amz-Target: "'SageMaker.CreateAutoMLJob'"
           integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
-        PassthroughBehavior: NEVER
-        RequestTemplates:
-          application/json: !Sub
-            - |
-              {
-                "AutoMLJobConfig": {
-                  "CompletionCriteria": {
-                    "MaxAutoMLJobRuntimeInSeconds": $input.json('$.MaxTime')
-                  }
-                },
-                #set( $model-name = $input.json('$.ModelName').replaceAll('\"','') )
-                #set( $auto-ml-job-suffix = '-job' )
-                #set( $auto-ml-job-datasets-suffix = '/datasets/' )
-                #set( $auto-ml-job-name = "$model-name$auto-ml-job-suffix" )
-                #set( $auto-ml-job-datasets-path = "$auto-ml-job-name$auto-ml-job-datasets-suffix" )
-                "AutoMLJobName": "$auto-ml-job-name",
-                "ModelDeployConfig": $input.json('$.ModelDeployConfig'),
-                "AutoMLJobObjective": {
-                  "MetricName": $input.json('$.ObjectiveMetric')
-                },
-                "InputDataConfig": [
-                  {
-                    "TargetAttributeName": $input.json('$.TargetColumn'),
-                    "AutoMLDatasetDefinition": {
-                      "AutoMLSnowflakeDatasetDefinition": {
-                        "Warehouse": $input.json('$.Warehouse'),
-                        "Database": $input.json('$.Database'),
-                        "Schema": $input.json('$.Schema'),
-                        "TableName": $input.json('$.TableName'),
-                        "SnowflakeRole": "${snowflakeRole}",
-                        "SecretArn": "${snowflakeSecretArn}",
-                        "OutputS3Uri": "${outputS3Uri}$auto-ml-job-datasets-path",
-                        "StorageIntegration": "${AWS::StackName}_${AWS::Region}_storage_integration"
-                      }
-                    }
-                  }
-                ],
-                "OutputDataConfig": {
-                  "S3OutputPath": "${outputS3Uri}"
-                },
-                "ProblemType": $input.json('$.ProblemType'),
-                "RoleArn": "${RoleArn}"
-              }
-            - RoleArn: !GetAtt "SnowflakeAutoMLExecutionRole.Arn"
-              outputS3Uri:
-                Fn::Join:
-                  - ""
-                  - - "s3://"
-                    - Ref: s3BucketName
-                    - "/output/"
+        PassthroughBehavior: WHEN_NO_MATCH        
         IntegrationResponses:
           - StatusCode: 200
-            SelectionPattern: '2..'
-            ResponseTemplates:
-              application/json: |
-                {
-                  "Message": "Model training started"
-                }
+            SelectionPattern: '2..'            
           - StatusCode: 400
-            SelectionPattern: '4..'
-            ResponseTemplates:
-              application/json: |
-                $input.body
+            SelectionPattern: '4..'            
           - StatusCode: 500
-            SelectionPattern: '5..'
-            ResponseTemplates:
-              application/json: |
-                $input.body
+            SelectionPattern: '5..'        
       MethodResponses:
         - StatusCode: 200
         - StatusCode: 400
@@ -490,7 +438,7 @@ Resources:
           integration.request.header.Content-Type: "'text/csv'"
           integration.request.header.Accept: "'application/json'"
         Credentials: !GetAtt SnowflakeAPIGatewayExecutionRole.Arn
-        PassthroughBehavior: NEVER
+        PassthroughBehavior: WHEN_NO_MATCH
         Uri:
           Fn::Join:
             - ""
@@ -500,23 +448,13 @@ Resources:
               - Ref: AWS::Region
               - :runtime.sagemaker:path/endpoints/{endpointName}
               - /invocations
-        RequestTemplates:
-          application/json: $input.body
         IntegrationResponses:
           - StatusCode: 200
             SelectionPattern: '2..'
-            ResponseTemplates:
-              application/json: $input.body
           - StatusCode: 400
             SelectionPattern: '4..'
-            ResponseTemplates:
-              application/json: |
-                $input.body
           - StatusCode: 500
             SelectionPattern: '5..'
-            ResponseTemplates:
-              application/json: |
-                $input.body
       MethodResponses:
         - StatusCode: 200
         - StatusCode: 400
@@ -543,30 +481,14 @@ Resources:
         RequestParameters:
           integration.request.header.X-Amz-Target: "'SageMaker.DeleteEndpoint'"
           integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
-        PassthroughBehavior: NEVER
-        RequestTemplates:
-          application/json: |
-            {
-              "EndpointName": $input.json('$.EndpointName')
-            }
+        PassthroughBehavior: WHEN_NO_MATCH        
         IntegrationResponses:
           - StatusCode: 200
-            SelectionPattern: '2..'
-            ResponseTemplates:
-              application/json: |
-                {
-                  "Message": "Deleting endpoint"
-                }
+            SelectionPattern: '2..'            
           - StatusCode: 400
-            SelectionPattern: '4..'
-            ResponseTemplates:
-              application/json: |
-                $input.body
+            SelectionPattern: '4..'            
           - StatusCode: 500
-            SelectionPattern: '5..'
-            ResponseTemplates:
-              application/json: |
-                $input.body
+            SelectionPattern: '5..'            
       MethodResponses:
         - StatusCode: 200
         - StatusCode: 400
@@ -593,32 +515,14 @@ Resources:
         RequestParameters:
           integration.request.header.X-Amz-Target: "'SageMaker.CreateEndpoint'"
           integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
-        PassthroughBehavior: NEVER
-        RequestTemplates:
-          application/json: |
-            {
-              "EndpointConfigName": $input.json('$.EndpointConfigName'),
-              "EndpointName": $input.json('$.EndpointName'),
-              "DeletionCondition": $input.json('$.DeletionCondition')
-            }
+        PassthroughBehavior: WHEN_NO_MATCH        
         IntegrationResponses:
           - StatusCode: 200
             SelectionPattern: '2..'
-            ResponseTemplates:
-              application/json: |
-                {
-                  "Message": "Creating endpoint"
-                }
           - StatusCode: 400
             SelectionPattern: '4..'
-            ResponseTemplates:
-              application/json: |
-                $input.body
           - StatusCode: 500
             SelectionPattern: '5..'
-            ResponseTemplates:
-              application/json: |
-                $input.body
       MethodResponses:
         - StatusCode: 200
         - StatusCode: 400
@@ -645,37 +549,14 @@ Resources:
         RequestParameters:
           integration.request.header.X-Amz-Target: "'SageMaker.DescribeAutoMLJob'"
           integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
-        PassthroughBehavior: NEVER
-        RequestTemplates:
-          application/json: |
-            {
-              #set( $model-name = $input.json('$.ModelName').replaceAll('\"','') )
-              #set( $auto-ml-job-suffix = '-job' )
-              #set( $auto-ml-job-name = "$model-name$auto-ml-job-suffix" )
-              "AutoMLJobName": "$auto-ml-job-name"
-            }
+        PassthroughBehavior: WHEN_NO_MATCH        
         IntegrationResponses:
           - StatusCode: 200
-            SelectionPattern: '2..'
-            ResponseTemplates:
-              application/json: |
-                {
-                  "ObjectiveMetric": $input.json('$.BestCandidate.FinalAutoMLJobObjectiveMetric.MetricName'),
-                  "BestObjectiveMetric": $input.json('$.BestCandidate.FinalAutoMLJobObjectiveMetric.Value'),
-                  "JobStatus": $input.json('$.AutoMLJobStatus'),
-                  "JobStatusDetails": $input.json('$.AutoMLJobSecondaryStatus'),
-                  "FailureReason": $input.json('$.ErrorInfo')
-                }
+            SelectionPattern: '2..'            
           - StatusCode: 400
-            SelectionPattern: '4..'
-            ResponseTemplates:
-              application/json: |
-                $input.body
+            SelectionPattern: '4..'            
           - StatusCode: 500
-            SelectionPattern: '5..'
-            ResponseTemplates:
-              application/json: |
-                $input.body
+            SelectionPattern: '5..'            
       MethodResponses:
         - StatusCode: 200
         - StatusCode: 400
@@ -702,31 +583,14 @@ Resources:
         RequestParameters:
           integration.request.header.X-Amz-Target: "'SageMaker.DescribeEndpoint'"
           integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
-        PassthroughBehavior: NEVER
-        RequestTemplates:
-          application/json: |
-            {
-              "EndpointName": $input.json('$.EndpointName')
-            }
+        PassthroughBehavior: WHEN_NO_MATCH        
         IntegrationResponses:
           - StatusCode: 200
-            SelectionPattern: '2..'
-            ResponseTemplates:
-              application/json: |
-                {
-                  "EndpointStatus": $input.json('$.EndpointStatus')
-                  "FailureReason": $input.json('$.FailureReason')
-                }
+            SelectionPattern: '2..'            
           - StatusCode: 400
-            SelectionPattern: '4..'
-            ResponseTemplates:
-              application/json: |
-                $input.body
+            SelectionPattern: '4..'            
           - StatusCode: 500
-            SelectionPattern: '5..'
-            ResponseTemplates:
-              application/json: |
-                $input.body
+            SelectionPattern: '5..'            
       MethodResponses:
         - StatusCode: 200
         - StatusCode: 400
@@ -852,6 +716,8 @@ Resources:
           SecretArn: !Ref snowflakeSecretArn
           SnowflakeRole: !Ref snowflakeRole
           StackName: !Sub "${AWS::StackName}"
+          DatabaseName: !Ref snowflakeDatabaseName
+          SchemaName: !Ref snowflakeSchemaName
   SnowflakeResources:
     Type: Custom::SnowflakeResources
     DependsOn:
