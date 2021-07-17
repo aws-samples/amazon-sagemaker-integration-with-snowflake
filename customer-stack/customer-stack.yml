@@ -4,32 +4,39 @@ Parameters:
     Type: String
     Description: "Name of the S3 bucket to be created"
     AllowedPattern: ".+"
+    MinLength: 1
   snowflakeSecretArn:
     Type: String
     Description: "ARN of the AWS Secret containing the Snowflake login information"
     AllowedPattern: ".+"
+    MinLength: 1
   snowflakeRole:
     Type: String
     Description: "Snowflake Role with permissions to create Storage and API Integrations"
     Default: "ACCOUNTADMIN"
+    MinLength: 1
     AllowedPattern: ".+"
   snowflakeDatabaseName:
     Type: String
     Description: "Snowflake Database in which external functions will be created"
+    MinLength: 1
     AllowedPattern: ".+"
   snowflakeSchemaName:
     Type: String
     Description: "Snowflake Database Schema in which external functions will be created"
+    MinLength: 1
     AllowedPattern: ".+"     
   apiGatewayName:
     Type: "String"
     AllowedPattern: "^[a-zA-Z0-9]+[-a-zA-Z0-9-]+[-a-zA-Z0-9]+$"
-    Default: "ext-func-api"
+    MinLength: 1
+    Default: "snowflake-autopilot-api"
     Description: API Gateway name
   apiGatewayStageName:
     Type: "String"
     AllowedPattern: "^[-a-zA-Z0-9]+$"
-    Default: "ext-func-stage"
+    MinLength: 1
+    Default: "snowflake-autopilot-stage"
     Description: "API deployment stage"
   codeBucket:
     Type: String
@@ -67,7 +74,7 @@ Resources:
           Resource: '*'
   S3Bucket:
     Type: 'AWS::S3::Bucket'
-    DeletionPolicy: Retain
+    DeletionPolicy: Delete
     Properties:
       BucketName: !Ref s3BucketName
       BucketEncryption:
@@ -167,6 +174,9 @@ Resources:
                   - 'sagemaker:CreateEndpoint'
                   - 'sagemaker:DescribeAutoMLJob'
                   - 'sagemaker:DescribeEndpoint'
+                  - 'sagemaker:CreateEndpointConfig'
+                  - 'sagemaker:DescribeEndpointConfig'
+                  - 'sagemaker:DeleteEndpointConfig'
                 Resource: '*'
         - PolicyName: passRoleToExecute
           PolicyDocument:
@@ -336,6 +346,9 @@ Resources:
       - "CreateEndpointPostMethod"
       - "DescribeModelPostMethod"
       - "DescribeEndpointPostMethod"
+      - "CreateEndpointConfigPostMethod"
+      - "DescribeEndpointConfigPostMethod"
+      - "DeleteEndpointConfigPostMethod"
     Properties:
       RestApiId: !Ref "SnowflakeApiGateway"
       StageName: !Ref apiGatewayStageName
@@ -371,12 +384,24 @@ Resources:
       RestApiId: !Ref SnowflakeApiGateway
       ParentId: !Ref RootApiResource
       PathPart: deleteendpoint
+  DeleteEndpointConfigApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref SnowflakeApiGateway
+      ParentId: !Ref RootApiResource
+      PathPart: deleteendpointconfig   
   CreateEndpointApiResource:
     Type: 'AWS::ApiGateway::Resource'
     Properties:
       RestApiId: !Ref SnowflakeApiGateway
       ParentId: !Ref RootApiResource
       PathPart: createendpoint
+  CreateEndpointConfigApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref SnowflakeApiGateway
+      ParentId: !Ref RootApiResource
+      PathPart: createendpointconfig    
   DescribeModelApiResource:
     Type: 'AWS::ApiGateway::Resource'
     Properties:
@@ -389,6 +414,12 @@ Resources:
       RestApiId: !Ref SnowflakeApiGateway
       ParentId: !Ref RootApiResource
       PathPart: describeendpoint
+  DescribeEndpointConfigApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref SnowflakeApiGateway
+      ParentId: !Ref RootApiResource
+      PathPart: describeendpointconfig    
   CreateModelPostMethod:
     Type: "AWS::ApiGateway::Method"
     Properties:
@@ -597,6 +628,108 @@ Resources:
         - StatusCode: 500
       ResourceId: !Ref "DescribeEndpointApiResource"
       RestApiId: !Ref "SnowflakeApiGateway"
+  DescribeEndpointConfigPostMethod:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      AuthorizationType: "AWS_IAM"
+      HttpMethod: "POST"
+      Integration:
+        IntegrationHttpMethod: "POST"
+        Type: "AWS"
+        Credentials: !GetAtt SnowflakeAPIGatewayExecutionRole.Arn
+        Uri:
+          Fn::Join:
+            - ":"
+            - - "arn"
+              - Ref: AWS::Partition
+              - "apigateway"
+              - Ref: AWS::Region
+              - "sagemaker:action/DescribeEndpointConfig"
+        RequestParameters:
+          integration.request.header.X-Amz-Target: "'SageMaker.DescribeEndpointConfig'"
+          integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
+        PassthroughBehavior: WHEN_NO_MATCH        
+        IntegrationResponses:
+          - StatusCode: 200
+            SelectionPattern: '2..'            
+          - StatusCode: 400
+            SelectionPattern: '4..'            
+          - StatusCode: 500
+            SelectionPattern: '5..'            
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 400
+        - StatusCode: 500
+      ResourceId: !Ref "DescribeEndpointConfigApiResource"
+      RestApiId: !Ref "SnowflakeApiGateway"
+  CreateEndpointConfigPostMethod:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      AuthorizationType: "AWS_IAM"
+      HttpMethod: "POST"
+      Integration:
+        IntegrationHttpMethod: "POST"
+        Type: "AWS"
+        Credentials: !GetAtt SnowflakeAPIGatewayExecutionRole.Arn
+        Uri:
+          Fn::Join:
+            - ":"
+            - - "arn"
+              - Ref: AWS::Partition
+              - "apigateway"
+              - Ref: AWS::Region
+              - "sagemaker:action/CreateEndpointConfig"
+        RequestParameters:
+          integration.request.header.X-Amz-Target: "'SageMaker.CreateEndpointConfig'"
+          integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
+        PassthroughBehavior: WHEN_NO_MATCH        
+        IntegrationResponses:
+          - StatusCode: 200
+            SelectionPattern: '2..'
+          - StatusCode: 400
+            SelectionPattern: '4..'
+          - StatusCode: 500
+            SelectionPattern: '5..'
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 400
+        - StatusCode: 500
+      ResourceId: !Ref "CreateEndpointConfigApiResource"
+      RestApiId: !Ref "SnowflakeApiGateway"
+  DeleteEndpointConfigPostMethod:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      AuthorizationType: "AWS_IAM"
+      HttpMethod: "POST"
+      Integration:
+        IntegrationHttpMethod: "POST"
+        Type: "AWS"
+        Credentials: !GetAtt SnowflakeAPIGatewayExecutionRole.Arn
+        Uri:
+          Fn::Join:
+            - ":"
+            - - "arn"
+              - Ref: AWS::Partition
+              - "apigateway"
+              - Ref: AWS::Region
+              - "sagemaker:action/DeleteEndpointConfig"
+        RequestParameters:
+          integration.request.header.X-Amz-Target: "'SageMaker.DeleteEndpointConfig'"
+          integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
+        PassthroughBehavior: WHEN_NO_MATCH        
+        IntegrationResponses:
+          - StatusCode: 200
+            SelectionPattern: '2..'            
+          - StatusCode: 400
+            SelectionPattern: '4..'            
+          - StatusCode: 500
+            SelectionPattern: '5..'            
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 400
+        - StatusCode: 500
+      ResourceId: !Ref "DeleteEndpointConfigApiResource"
+      RestApiId: !Ref "SnowflakeApiGateway"      
   CopyZipsLambda:
     Type: AWS::Lambda::Function
     Properties:
