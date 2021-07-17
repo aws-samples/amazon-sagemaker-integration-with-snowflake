@@ -200,6 +200,9 @@ def create_external_functions(snowflake_cursor, api_integration_name, auto_ml_ro
     create_deleteendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn)
+    create_deleteendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url)
+    create_describeendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url)
+
 
 
 def create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_url):
