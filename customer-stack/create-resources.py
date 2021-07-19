@@ -32,6 +32,9 @@ def lambda_handler(event, context):
     secret_name = os.environ['SecretArn']
     snowflake_role_name = os.environ['SnowflakeRole']
     stack_name = os.environ['StackName']
+    database_name = os.environ['DatabaseName']
+    schema_name = os.environ['SchemaName']
+
 
     logger.info("api_gateway_role_arn: " + api_gateway_role_arn)
     logger.info("api_gateway_role_name: " + api_gateway_role_name)
@@ -41,6 +44,8 @@ def lambda_handler(event, context):
     logger.info("region_name: " + region_name)
     logger.info("secret_name: " + secret_name)
     logger.info("snowflake_role_name: " + snowflake_role_name)
+    logger.info("database_name: " + database_name)
+    logger.info("schema_name: " + schema_name)
 
     # Initialize integration related variables
     storage_integration_info = {}
@@ -70,6 +75,10 @@ def lambda_handler(event, context):
         snowflake_connection = connect_to_snowflake(get_secret_value_response, snowflake_role_name)
         snowflake_cursor = snowflake_connection.cursor()
 
+        snowflake_cursor.execute(("use database \"%s\" ") % (database_name))
+        
+        snowflake_cursor.execute(("use schema \"%s\" ") % (schema_name))
+
         snowflake_resources_prefix = stack_name + "_" + region_name
         storage_integration_name = snowflake_resources_prefix + "_storage_integration"
         api_integration_name = snowflake_resources_prefix + "_api_integration"
@@ -77,6 +86,7 @@ def lambda_handler(event, context):
         # Create Snowflake Integrations
         create_storage_integration(snowflake_cursor, storage_integration_name, auto_ml_role_arn, s3_bucket_name)
         create_api_integration(snowflake_cursor, api_integration_name, api_gateway_role_arn, api_gateway_url)
+        create_external_functions(snowflake_cursor, api_integration_name, auto_ml_role_arn, api_gateway_url, s3_bucket_name, secret_name, storage_integration_name)
 
         # Describe Snowflake integrations
         storage_integration_info = get_storage_integration_info_for_policy(snowflake_cursor, storage_integration_name)
@@ -181,6 +191,409 @@ def create_api_integration(snowflake_cursor, api_integration_name, api_gateway_r
 
     snowflake_cursor.execute(api_integration_str)
 
+
+def create_external_functions(snowflake_cursor, api_integration_name, auto_ml_role_arn, api_gateway_url, s3_bucket_name, secret_arn, storage_integration_name):
+    create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_url)
+    create_createendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url)
+    create_createendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url)
+    create_describeendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url)
+    create_deleteendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url)
+    create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway_url)
+    create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn)
+    create_deleteendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url)
+    create_describeendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url)
+
+
+
+def create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    describemodel_serializer_str = ("create or replace function AWS_AUTOPILOT_DESCRIBE_MODEL_SERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+        let item = EVENT.body.data[0][1]; \
+        let payload = { \
+            \"AutoMLJobName\" : item + \"-job\" \
+        }; \
+        return {\"body\": JSON.stringify(payload)};\
+        $$") 
+
+    snowflake_cursor.execute(describemodel_serializer_str)
+
+    describemodel_deserializer_str = ("create or replace function AWS_AUTOPILOT_DESCRIBE_MODEL_DESERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+        let responseBody = EVENT.body; \
+        let response ={}; \
+        response[\"JobStatus\"] = responseBody.AutoMLJobStatus; \
+        response[\"JobStatusDetails\"] = responseBody.AutoMLJobSecondaryStatus; \
+            if (responseBody.AutoMLJobStatus === \"Completed\") \
+        { \
+        response[\"ObjectiveMetric\"] = responseBody.BestCandidate.FinalAutoMLJobObjectiveMetric.MetricName; \
+        response[\"BestObjectiveMetric\"] = responseBody.BestCandidate.FinalAutoMLJobObjectiveMetric.Value; \
+        } else if (responseBody.AutoMLJobStatus === \"Failed\") \
+        {\
+            response[\"FailureReason\"] = responseBody.FailureReason;\
+        }\
+        return {\"body\":{   \"data\" : [[0,response]]  }} \
+        $$;")
+
+    snowflake_cursor.execute(describemodel_deserializer_str)
+
+    create_describemodel_ef_str = ("create or replace external function AWS_AUTOPILOT_DESCRIBE_MODEL(modelname varchar) \
+        returns variant \
+        api_integration = \"%s\" \
+        serializer = AWS_AUTOPILOT_DESCRIBE_MODEL_SERIALIZER \
+        deserializer=AWS_AUTOPILOT_DESCRIBE_MODEL_DESERIALIZER \
+        max_batch_rows=1 \
+        as '%s/describemodel';") % (api_integration_name, api_gateway_url)
+
+    snowflake_cursor.execute(create_describemodel_ef_str)
+
+
+def create_createendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    createendpoint_serializer_str = ("create or replace function AWS_AUTOPILOT_CREATE_ENDPOINT_SERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+        let endpointName = EVENT.body.data[0][1]; \
+        let endpointConfigName = EVENT.body.data[0][2]; \
+        let payload = { \
+                \"EndpointName\" : endpointName, \
+                \"EndpointConfigName\" : endpointConfigName, \
+                \"DeletionCondition\": { \
+                \"MaxRuntimeInSeconds\": 7200 \
+                } \
+              }; \
+        return {\"body\": payload}; \
+        $$")
+
+    snowflake_cursor.execute(createendpoint_serializer_str)
+
+    createendpoint_deserializer_str = ("create or replace function AWS_AUTOPILOT_CREATE_ENDPOINT_DESERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+            return {\"body\": {   \"data\" : [[0, EVENT.body]]  }}\
+        $$;")
+
+    snowflake_cursor.execute(createendpoint_deserializer_str)
+
+    create_createendpoint_ef_str = ("create or replace external function AWS_AUTOPILOT_CREATE_ENDPOINT(endpointName varchar, endpointConfigName varchar) \
+    returns variant \
+    api_integration = \"%s\" \
+    serializer = AWS_AUTOPILOT_CREATE_ENDPOINT_SERIALIZER \
+    deserializer=AWS_AUTOPILOT_CREATE_ENDPOINT_DESERIALIZER \
+    max_batch_rows=1 \
+    as '%s/createendpoint';") % (api_integration_name, api_gateway_url)
+
+    snowflake_cursor.execute(create_createendpoint_ef_str)
+
+
+def create_createendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    createendpointconfig_serializer_str = ("create or replace function AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG_SERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+        let endpointConfigName = EVENT.body.data[0][1]; \
+        let modelName = EVENT.body.data[0][2]; \
+        let instanceType = EVENT.body.data[0][3]; \
+        let instanceCount = EVENT.body.data[0][4]; \
+        let payload = { \
+        \"EndpointConfigName\": endpointConfigName, \
+        \"ProductionVariants\" : [ \
+        { \
+            \"InstanceType\": instanceType, \
+            \"ModelName\": modelName, \
+            \"InitialInstanceCount\": instanceCount, \
+            \"VariantName\" : endpointConfigName + \"-variant\" \
+        }] \
+        }; \
+        return {\"body\": payload}; \
+        $$")
+
+    snowflake_cursor.execute(createendpointconfig_serializer_str)
+
+    createendpointconfig_deserializer_str = ("create or replace function AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG_DESERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+            return {\"body\": {   \"data\" : [[0, EVENT.body]]  }};\
+        $$;")
+
+    snowflake_cursor.execute(createendpointconfig_deserializer_str)
+
+    create_createendpointconfig_ef_str = ("create or replace external function AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG(endpointConfigName varchar, modelName varchar, instanceType varchar, instanceCount int) \
+    returns variant \
+    api_integration = \"%s\" \
+    serializer = AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG_SERIALIZER \
+    deserializer=AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG_DESERIALIZER \
+    max_batch_rows=1 \
+    as '%s/createendpointconfig';") % (api_integration_name, api_gateway_url)
+
+    snowflake_cursor.execute(create_createendpointconfig_ef_str)
+
+def create_describeendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    describeendpointconfig_serializer_str = ("create or replace function AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG_SERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+        let endpointConfigName = EVENT.body.data[0][1]; \
+        let payload = { \
+        \"EndpointConfigName\": endpointConfigName \
+        }; \
+        return {\"body\": payload}; \
+        $$")
+
+    snowflake_cursor.execute(describeendpointconfig_serializer_str)
+
+    describeendpointconfig_deserializer_str = ("create or replace function AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG_DESERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+            return {\"body\": {   \"data\" : [[0, EVENT.body]]  }};\
+        $$;")
+
+    snowflake_cursor.execute(describeendpointconfig_deserializer_str)
+
+    create_describeendpointconfig_ef_str = ("create or replace external function AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG(endpointConfigName varchar, modelName varchar, instanceType varchar, instanceCount int) \
+    returns variant \
+    api_integration = \"%s\" \
+    serializer = AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG_SERIALIZER \
+    deserializer=AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG_DESERIALIZER \
+    max_batch_rows=1 \
+    as '%s/describeendpointconfig';") % (api_integration_name, api_gateway_url)
+
+    snowflake_cursor.execute(create_describeendpointconfig_ef_str)
+
+def create_deleteendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    deleteendpointconfig_serializer_str = ("create or replace function AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG_SERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+        let endpointConfigName = EVENT.body.data[0][1]; \
+        let payload = { \
+        \"EndpointConfigName\": endpointConfigName \
+        }; \
+        return {\"body\": payload}; \
+        $$")
+
+    snowflake_cursor.execute(deleteendpointconfig_serializer_str)
+
+    deleteendpointconfig_deserializer_str = ("create or replace function AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG_DESERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+            return {\"body\": {   \"data\" : [[0, EVENT.body]]  }};\
+        $$;")
+
+    snowflake_cursor.execute(deleteendpointconfig_deserializer_str)
+
+    create_deleteendpointconfig_ef_str = ("create or replace external function AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG(endpointConfigName varchar, modelName varchar, instanceType varchar, instanceCount int) \
+    returns variant \
+    api_integration = \"%s\" \
+    serializer = AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG_SERIALIZER \
+    deserializer=AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG_DESERIALIZER \
+    max_batch_rows=1 \
+    as '%s/deleteendpointconfig';") % (api_integration_name, api_gateway_url)
+
+    snowflake_cursor.execute(create_deleteendpointconfig_ef_str)
+
+def create_describeendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    describeendpoint_serializer_str = ("create or replace function AWS_AUTOPILOT_DESCRIBE_ENDPOINT_SERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+            let endpointName = EVENT.body.data[0][1]; \
+            let payload = { \
+                \"EndpointName\" : endpointName \
+              }; \
+        return {\"body\": JSON.stringify(payload)};\
+        $$")
+
+    snowflake_cursor.execute(describeendpoint_serializer_str)
+
+    describeendpoint_deserializer_str = ("create or replace function AWS_AUTOPILOT_DESCRIBE_ENDPOINT_DESERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+            return {\"body\": {   \"data\" : [[0, EVENT.body]]  }}\
+        $$;")
+
+    snowflake_cursor.execute(describeendpoint_deserializer_str)
+
+    create_describeendpoint_ef_str = ("create or replace external function AWS_AUTOPILOT_DESCRIBE_ENDPOINT(endpointName varchar) \
+    returns variant \
+    api_integration = \"%s\" \
+    serializer = AWS_AUTOPILOT_DESCRIBE_ENDPOINT_SERIALIZER \
+    deserializer=AWS_AUTOPILOT_DESCRIBE_ENDPOINT_DESERIALIZER \
+    max_batch_rows=1 \
+    as '%s/describeendpoint';") % (api_integration_name, api_gateway_url)
+
+    snowflake_cursor.execute(create_describeendpoint_ef_str)
+
+
+def create_deleteendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    deleteendpoint_serializer_str = ("create or replace function AWS_AUTOPILOT_DELETE_ENDPOINT_SERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+            let endpointName = EVENT.body.data[0][1]; \
+            let payload = { \
+                \"EndpointName\" : endpointName \
+              }; \
+        return {\"body\": JSON.stringify(payload)};\
+        $$")
+
+    snowflake_cursor.execute(deleteendpoint_serializer_str)
+
+    deleteendpoint_deserializer_str = ("create or replace function AWS_AUTOPILOT_DELETE_ENDPOINT_DESERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+            return {\"body\": {   \"data\" : [[0, EVENT.body]]  }}\
+        $$;")
+
+    snowflake_cursor.execute(deleteendpoint_deserializer_str)
+
+    create_deleteendpoint_ef_str = ("create or replace external function AWS_AUTOPILOT_DELETE_ENDPOINT(endpointName varchar) \
+    returns variant \
+    api_integration = \"%s\" \
+    serializer = AWS_AUTOPILOT_DELETE_ENDPOINT_SERIALIZER \
+    deserializer=AWS_AUTOPILOT_DELETE_ENDPOINT_DESERIALIZER \
+    max_batch_rows=1 \
+    as '%s/deleteendpoint';") % (api_integration_name, api_gateway_url)
+
+    snowflake_cursor.execute(create_deleteendpoint_ef_str)
+
+
+def create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    predictoutcome_serializer_str = ("create or replace function AWS_AUTOPILOT_PREDICT_OUTCOME_SERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+        let modelName = \"/\"  + EVENT.body.data[0][1]; \
+        var payload = []; \
+        for(i = 0; i < EVENT.body.data.length; i++) { \
+            var row = EVENT.body.data[i]; \
+            payload[i] = row[2]; \
+        } \
+        payloadBody = payload.map(e => e.join(',')).join('\\n'); \
+        return {\"body\": payloadBody,  \"urlSuffix\" : modelName}; \
+        $$")
+
+    snowflake_cursor.execute(predictoutcome_serializer_str)
+
+    predictoutcome_deserializer_str = ("create or replace function AWS_AUTOPILOT_PREDICT_OUTCOME_DESERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+        let array_of_rows_to_return = []; \
+        let rows = EVENT.body.predictions; \
+        for (let i = 0; i < rows.length; i++) { \
+        let row_to_return = [i, rows[i]]; \
+        array_of_rows_to_return.push(row_to_return); \
+        } \
+        return {\"body\": {\"data\": array_of_rows_to_return}}; \
+        $$;")
+
+    snowflake_cursor.execute(predictoutcome_deserializer_str)
+
+    create_predictoutcome_ef_str = ("create or replace external function AWS_AUTOPILOT_PREDICT_OUTCOME(endpointName varchar, columns array) \
+    returns variant \
+    api_integration = \"%s\" \
+    serializer = AWS_AUTOPILOT_PREDICT_OUTCOME_SERIALIZER \
+    deserializer=AWS_AUTOPILOT_PREDICT_OUTCOME_DESERIALIZER \
+    max_batch_rows=1 \
+    as '%s/predictoutcome';") % (api_integration_name, api_gateway_url)
+
+    snowflake_cursor.execute(create_predictoutcome_ef_str)
+
+
+def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn):
+    createmodel_serializer_str = ("create or replace function AWS_AUTOPILOT_CREATE_MODEL_SERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+        let modelname = EVENT.body.data[0][1]; \
+        let targetTable = EVENT.body.data[0][2]; \
+        let targetCol = EVENT.body.data[0][3]; \
+        let contextHeaders = EVENT.contextHeaders; \
+        let jobDatasetsPath = modelname + \"-job/datasets/\" ; \
+        let databaseName = contextHeaders[\"sf-context-current-database\"]; \
+        let schemaName = contextHeaders[\"sf-context-current-schema\"]; \
+        let tableNameComponents = targetTable.split(\".\"); \
+        let s3OutputUri = \"s3://\" + \"%s\" + \"/output/\"; \
+        if (tableNameComponents.length === 3) \
+        {\
+            databaseName = tableNameComponents[0]; \
+            schemaName = tableNameComponents[1]; \
+        } else if (tableNameComponents.length === 2) \
+        { \
+            schemaName = tableNameComponents[0];\
+        }\
+        \
+        let payload = { \
+            \"AutoMLJobConfig\": { \
+            \"CompletionCriteria\": { \
+                \"MaxAutoMLJobRuntimeInSeconds\": 7200 \
+            } \
+            }, \
+            \"AutoMLJobName\": modelname + \"-job\", \
+            \"ModelDeployConfig\": { \
+                \"ModelDeployMode\": \"Endpoint\",\
+                \"EndpointConfigDefinitions\": [\
+                {\
+                    \"EndpointConfigName\":  modelname + \"-m5-24xl-3\",\
+                    \"InitialInstanceCount\": 3,\
+                    \"InstanceType\": \"ml.m5.24xlarge\"\
+                }\
+                ],\
+                \"EndpointDefinitions\": [\
+                {\
+                    \"EndpointName\": modelname,\
+                    \"EndpointConfigName\": modelname + \"-m5-24xl-3\",\
+                    \"DeletionCondition\": {\
+                    \"MaxRuntimeInSeconds\": 7200\
+                    }\
+                }\
+                ]\
+            },\
+            \"AutoMLJobObjective\": {\
+            \"MetricName\": \"Accuracy\"\
+            },\
+            \"InputDataConfig\": [\
+            {\
+                \"TargetAttributeName\": targetCol.toUpperCase(),\
+                \"AutoMLDatasetDefinition\": {\
+                \"AutoMLSnowflakeDatasetDefinition\": {\
+                    \"Warehouse\": contextHeaders[\"sf-context-current-warehouse\"],\
+                    \"Database\": databaseName,\
+                    \"Schema\": schemaName,\
+                    \"TableName\": targetTable,\
+                    \"SnowflakeRole\": \"ACCOUNTADMIN\",\
+                    \"SecretArn\": \"%s\",\
+                    \"OutputS3Uri\": s3OutputUri + jobDatasetsPath,\
+                    \"StorageIntegration\": \"%s\"\
+                }\
+                }\
+            }\
+            ],\
+            \"OutputDataConfig\": {\
+            \"S3OutputPath\": s3OutputUri\
+            },\
+            \"ProblemType\": \"MulticlassClassification\",\
+            \"RoleArn\": \"%s\"\
+        };\
+        \
+        return {\"body\": JSON.stringify(payload)}; \
+        $$;") % (s3_bucket_name, secret_arn, storage_integration_name, auto_ml_role_arn)
+
+    snowflake_cursor.execute(createmodel_serializer_str)
+
+    createmodel_deserializer_str = ("create or replace function AWS_AUTOPILOT_CREATE_MODEL_DESERIALIZER(EVENT OBJECT) \
+        returns OBJECT LANGUAGE JAVASCRIPT AS \
+        $$ \
+        let arn = EVENT.body.AutoMLJobArn; \
+        let message = \"Model creation in progress. Model ARN = \" + arn; \
+        return {\"body\": {   \"data\" : [[0, message]]  }} \
+        $$;")
+
+    snowflake_cursor.execute(createmodel_deserializer_str)
+
+    create_createmodel_ef_str = ("create or replace external function AWS_AUTOPILOT_CREATE_MODEL(modelname varchar, targettable varchar, targetcol varchar) \
+    returns variant \
+    api_integration = \"%s\" \
+    context_headers  = (CURRENT_DATABASE, CURRENT_SCHEMA, CURRENT_WAREHOUSE) \
+    serializer = AWS_AUTOPILOT_CREATE_MODEL_SERIALIZER \
+    deserializer=AWS_AUTOPILOT_CREATE_MODEL_DESERIALIZER \
+    max_batch_rows=1 \
+    as '%s/createmodel';") % (api_integration_name, api_gateway_url)
+
+    snowflake_cursor.execute(create_createmodel_ef_str)
 
 def get_storage_integration_info_for_policy(snowflake_cursor, storage_integration_name):
     logger.info("Describing Storage Integration")
