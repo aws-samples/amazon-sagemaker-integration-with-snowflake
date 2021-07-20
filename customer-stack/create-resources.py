@@ -569,9 +569,6 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
                 }\
                 ]\
             },\
-            \"AutoMLJobObjective\": {\
-            \"MetricName\": \"Accuracy\"\
-            },\
             \"InputDataConfig\": [\
             {\
                 \"TargetAttributeName\": targetCol.toUpperCase(),\
@@ -599,7 +596,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         \
         if (objectiveMetric != undefined) { \
             payload[\"AutoMLJobObjective\"] = { \
-                \"MetricName\": \"Accuracy\"\
+                \"MetricName\": objectiveMetric\
             }\
         }\
         \
