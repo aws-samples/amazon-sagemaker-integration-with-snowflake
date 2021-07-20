@@ -597,7 +597,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         if (objectiveMetric != undefined) { \
             payload[\"AutoMLJobObjective\"] = { \
                 \"MetricName\": objectiveMetric\
-            }\
+            };\
         }\
         \
         return {\"body\": JSON.stringify(payload)}; \
