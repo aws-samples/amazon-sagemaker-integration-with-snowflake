@@ -75,9 +75,9 @@ def lambda_handler(event, context):
         snowflake_connection = connect_to_snowflake(get_secret_value_response, snowflake_role_name)
         snowflake_cursor = snowflake_connection.cursor()
 
-        snowflake_cursor.execute(("use database \"%s\" ") % (database_name))
+        snowflake_cursor.execute(("use database %s;") % (database_name))
         
-        snowflake_cursor.execute(("use schema \"%s\" ") % (schema_name))
+        snowflake_cursor.execute(("use schema %s;") % (schema_name))
 
         snowflake_resources_prefix = stack_name + "_" + region_name
         storage_integration_name = snowflake_resources_prefix + "_storage_integration"
