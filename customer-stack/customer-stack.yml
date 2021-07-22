@@ -162,17 +162,15 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - 'sagemaker:InvokeEndpoint'
                   - 'sagemaker:CreateAutoMLJob'
-                  - 'sagemaker:CreateEndpointConfig'
-                  - 'sagemaker:DeleteEndpointConfig'
-                  - 'sagemaker:DeleteEndpoint'
-                  - 'sagemaker:CreateEndpoint'
                   - 'sagemaker:DescribeAutoMLJob'
-                  - 'sagemaker:DescribeEndpoint'
                   - 'sagemaker:CreateEndpointConfig'
                   - 'sagemaker:DescribeEndpointConfig'
                   - 'sagemaker:DeleteEndpointConfig'
+                  - 'sagemaker:CreateEndpoint'
+                  - 'sagemaker:DescribeEndpoint'
+                  - 'sagemaker:InvokeEndpoint'
+                  - 'sagemaker:DeleteEndpoint'
                 Resource: '*'
         - PolicyName: passRoleToExecute
           PolicyDocument:
