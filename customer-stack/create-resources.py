@@ -499,6 +499,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         let modelname = EVENT.body.data[0][1]; \
         let targetTable = EVENT.body.data[0][2]; \
         let targetCol = EVENT.body.data[0][3]; \
+<<<<<<< HEAD
         let maxRunningTime = 7200; \
         let deployModel = true; \
         let modelEndpointTTL = 7*24*60*60; \
@@ -506,6 +507,15 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         let objectiveMetric; \
         \
         if (EVENT.body.data[0].length == 9) { \
+=======
+        let problemType = \"Auto\"; \
+        let maxRunningTime = 7200; \
+        let deployModel = true; \
+        let modelEndpointTTL = 7*24*60*60 // 7 days \
+        let objectiveMetric; \
+        \
+        if (EVENT.body.data[0].length == 8) { \
+>>>>>>> 3837aeb3bc4dda323c90d33ecbe1bb6d1d0249a5
             if (EVENT.body.data[0][4] != undefined) { \
                 objectiveMetric = EVENT.body.data[0][4]; \
             } \
@@ -599,10 +609,13 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
             };\
         }\
         \
+<<<<<<< HEAD
         if (problemType != undefined) { \
             payload[\"ProblemType\"] = problemType;\
         }\
         \
+=======
+>>>>>>> 3837aeb3bc4dda323c90d33ecbe1bb6d1d0249a5
         return {\"body\": JSON.stringify(payload)}; \
         $$;") % (s3_bucket_name, snowflake_role_name, secret_arn, storage_integration_name, auto_ml_role_arn)
 
