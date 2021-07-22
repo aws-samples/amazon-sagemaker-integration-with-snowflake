@@ -3,56 +3,50 @@ Parameters:
   s3BucketName:
     Type: String
     Description: "Name of the S3 bucket to be created"
-    AllowedPattern: ".+"
     MinLength: 1
   snowflakeSecretArn:
     Type: String
     Description: "ARN of the AWS Secret containing the Snowflake login information"
-    AllowedPattern: ".+"
     MinLength: 1
   snowflakeRole:
     Type: String
     Description: "Snowflake Role with permissions to create Storage and API Integrations"
     Default: "ACCOUNTADMIN"
     MinLength: 1
-    AllowedPattern: ".+"
   snowflakeDatabaseName:
     Type: String
     Description: "Snowflake Database in which external functions will be created"
     MinLength: 1
-    AllowedPattern: ".+"
   snowflakeSchemaName:
     Type: String
     Description: "Snowflake Database Schema in which external functions will be created"
     MinLength: 1
-    AllowedPattern: ".+"     
   apiGatewayName:
     Type: "String"
     AllowedPattern: "^[a-zA-Z0-9]+[-a-zA-Z0-9-]+[-a-zA-Z0-9]+$"
-    MinLength: 1
     Default: "snowflake-autopilot-api"
     Description: API Gateway name
   apiGatewayStageName:
     Type: "String"
     AllowedPattern: "^[-a-zA-Z0-9]+$"
-    MinLength: 1
     Default: "snowflake-autopilot-stage"
     Description: "API deployment stage"
+    MinLength: 1
   codeBucket:
     Type: String
     Description: "Name of the S3 bucket containing the layer code for Snowflake driver"
     Default: "sagemaker-sample-files"
-    AllowedPattern: ".+"
+    MinLength: 1
   pathToLayerCode:
     Type: String
     Description: "Path within codeBucket where the layer code is (example: libraries/snowflake-connector-python-0.1.zip)"
     Default: "libraries/snowflake-connector-python-0.1.zip"
-    AllowedPattern: ".+"
+    MinLength: 1
   pathToLambdaCode:
     Type: String
     Description: "Path within codeBucket where the lambda code is (example: libraries/create-resources-0.1.zip)"
     Default: "libraries/create-resources-0.1.zip"
-    AllowedPattern: ".+"
+    MinLength: 1
 Resources:
   KMSKey:
     Type: AWS::KMS::Key
@@ -168,15 +162,15 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - 'sagemaker:InvokeEndpoint'
                   - 'sagemaker:CreateAutoMLJob'
-                  - 'sagemaker:DeleteEndpoint'
-                  - 'sagemaker:CreateEndpoint'
                   - 'sagemaker:DescribeAutoMLJob'
-                  - 'sagemaker:DescribeEndpoint'
                   - 'sagemaker:CreateEndpointConfig'
                   - 'sagemaker:DescribeEndpointConfig'
                   - 'sagemaker:DeleteEndpointConfig'
+                  - 'sagemaker:CreateEndpoint'
+                  - 'sagemaker:DescribeEndpoint'
+                  - 'sagemaker:InvokeEndpoint'
+                  - 'sagemaker:DeleteEndpoint'
                 Resource: '*'
         - PolicyName: passRoleToExecute
           PolicyDocument:
