@@ -15,7 +15,7 @@ As the bucket for the integration is created as part of the CloudFormation templ
 The script *generate-layer.sh* located in the *customer-stack/* directory will be the responsible of downloading the needed files.
 
 In order to execute it, from a Linux terminal run:
-f
+
 ```
 % cd customer-stack/
 % bash generate-layer.sh
@@ -96,7 +96,7 @@ Give a name to your Secret and click next (for example: mySecret).
 
 These parameters are needed to create the stack.
 
-* s3BucketName: "Name of the S3 bucket to be created"
+* s3BucketName: "Name of the S3 bucketIn order to execute it, from a Linux terminal run to be created"
 * snowflakeSecretArn: "ARN of the AWS Secret containing the Snowflake login information"
 * snowflakeRole (Optional):"Snowflake Role with permissions to create Storage and API Integrations"
 * snowflakeDatabaseName: "Snowflake Database in which external functions will be created"
