@@ -15,7 +15,7 @@ As the bucket for the integration is created as part of the CloudFormation templ
 The script *generate-layer.sh* located in the *customer-stack/* directory will be the responsible of downloading the needed files.
 
 In order to execute it, from a Linux terminal run:
-
+f
 ```
 % cd customer-stack/
 % bash generate-layer.sh
@@ -99,11 +99,13 @@ These parameters are needed to create the stack.
 * s3BucketName: "Name of the S3 bucket to be created"
 * snowflakeSecretArn: "ARN of the AWS Secret containing the Snowflake login information"
 * snowflakeRole (Optional):"Snowflake Role with permissions to create Storage and API Integrations"
-* apiGatewayName (Optional): API Gateway name
+* snowflakeDatabaseName: "Snowflake Database in which external functions will be created"
+* snowflakeSchemaName: "Snowflake Database Schema in which external functions will be created"
+* apiGatewayName (Optional): "API Gateway name"
 * apiGatewayStageName (Optional): "API deployment stage"
-* codeBucket: "Name of the S3 bucket containing the code"
-* pathToLayerCode: "Path within codeBucket where the layer code is"
-* pathToLambdaCode: "Path within codeBucket where the lambda code is"
+* codeBucket (Optional): "Name of the S3 bucket containing the code. Default is sagemaker-sample-files (public S3 bucket)"
+* pathToLayerCode (Optional): "Path within codeBucket where the layer code is. Default is a location to public S3 bucket sagemaker-sample-files."
+* pathToLambdaCode (Optional): "Path within codeBucket where the lambda code is. Default is a location to public S3 bucket sagemaker-sample-files."
 
 ## Create the stack via the CLI
 
@@ -118,6 +120,8 @@ aws cloudformation create-stack \
 --parameters ParameterKey=s3BucketName,ParameterValue=snowflake-sagemaker-integration \
 ParameterKey=snowflakeSecretArn,ParameterValue=CREDENTIALS_SECRET_ARN \
 ParameterKey=snowflakeRole,ParameterValue=SNOWFLAKE_ROLE \
+ParameterKey=snowflakeDatabaseName,ParameterValue=SNOWFLAKE_DATABASE_NAME \
+ParameterKey=snowflakeSchemaName,ParameterValue=SNOWFLAKE_SCHEMA_NAME \
 ParameterKey=apiGatewayName,ParameterValue=API_GW_NAME \
 ParameterKey=apiGatewayStageName,ParameterValue=API_GW_STAGE_NAME \
 ParameterKey=codeBucket,ParameterValue=NAME_OF_THE_CODE_BUCKET \
