@@ -12,7 +12,7 @@ Parameters:
     MinLength: 1
   snowflakeRole:
     Type: String
-    Description: "Snowflake Role with permissions to create Storage and API Integrations"
+    Description: "Snowflake Role with permissions to create Storage Integrations, API Integrations and Functions"
     Default: "ACCOUNTADMIN"
     MinLength: 1
     AllowedPattern: ".+"
@@ -74,7 +74,7 @@ Resources:
           Resource: '*'
   S3Bucket:
     Type: 'AWS::S3::Bucket'
-    DeletionPolicy: Delete
+    DeletionPolicy: Retain
     Properties:
       BucketName: !Ref s3BucketName
       BucketEncryption:

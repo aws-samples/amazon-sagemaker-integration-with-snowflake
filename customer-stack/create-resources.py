@@ -79,9 +79,8 @@ def lambda_handler(event, context):
         
         snowflake_cursor.execute(("use schema %s;") % (schema_name))
 
-        snowflake_resources_prefix = stack_name + "_" + region_name
-        storage_integration_name = snowflake_resources_prefix + "_storage_integration"
-        api_integration_name = snowflake_resources_prefix + "_api_integration"
+        storage_integration_name = "AWS_AUTOPILOT_API_INTEGRATION" + "_" + stack_name
+        api_integration_name = "AWS_AUTOPILOT_STORAGE_INTEGRATION" + "_" + stack_name
 
         # Create Snowflake Integrations
         create_storage_integration(snowflake_cursor, storage_integration_name, auto_ml_role_arn, s3_bucket_name)
@@ -500,13 +499,13 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         let modelname = EVENT.body.data[0][1]; \
         let targetTable = EVENT.body.data[0][2]; \
         let targetCol = EVENT.body.data[0][3]; \
-        let problemType = \"Auto\"; \
         let maxRunningTime = 7200; \
         let deployModel = true; \
-        let modelEndpointTTL = 7*24*60*60 // 7 days \
+        let modelEndpointTTL = 7*24*60*60; \
+        let problemType; \
         let objectiveMetric; \
         \
-        if (EVENT.body.data[0].length == 8) { \
+        if (EVENT.body.data[0].length == 9) { \
             if (EVENT.body.data[0][4] != undefined) { \
                 objectiveMetric = EVENT.body.data[0][4]; \
             } \
@@ -598,6 +597,10 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
             payload[\"AutoMLJobObjective\"] = { \
                 \"MetricName\": objectiveMetric\
             };\
+        }\
+        \
+        if (problemType != undefined) { \
+            payload[\"ProblemType\"] = problemType;\
         }\
         \
         return {\"body\": JSON.stringify(payload)}; \
