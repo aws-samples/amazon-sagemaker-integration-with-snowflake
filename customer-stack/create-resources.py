@@ -75,9 +75,9 @@ def lambda_handler(event, context):
         snowflake_connection = connect_to_snowflake(get_secret_value_response, snowflake_role_name)
         snowflake_cursor = snowflake_connection.cursor()
 
-        snowflake_cursor.execute(("use database \"%s\" ") % (database_name))
+        snowflake_cursor.execute(("use database %s;") % (database_name))
         
-        snowflake_cursor.execute(("use schema \"%s\" ") % (schema_name))
+        snowflake_cursor.execute(("use schema %s;") % (schema_name))
 
         snowflake_resources_prefix = stack_name + "_" + region_name
         storage_integration_name = snowflake_resources_prefix + "_storage_integration"
@@ -86,7 +86,7 @@ def lambda_handler(event, context):
         # Create Snowflake Integrations
         create_storage_integration(snowflake_cursor, storage_integration_name, auto_ml_role_arn, s3_bucket_name)
         create_api_integration(snowflake_cursor, api_integration_name, api_gateway_role_arn, api_gateway_url)
-        create_external_functions(snowflake_cursor, api_integration_name, auto_ml_role_arn, api_gateway_url, s3_bucket_name, secret_name, storage_integration_name)
+        create_external_functions(snowflake_cursor, api_integration_name, auto_ml_role_arn, api_gateway_url, s3_bucket_name, secret_name, storage_integration_name, snowflake_role_name)
 
         # Describe Snowflake integrations
         storage_integration_info = get_storage_integration_info_for_policy(snowflake_cursor, storage_integration_name)
@@ -192,17 +192,16 @@ def create_api_integration(snowflake_cursor, api_integration_name, api_gateway_r
     snowflake_cursor.execute(api_integration_str)
 
 
-def create_external_functions(snowflake_cursor, api_integration_name, auto_ml_role_arn, api_gateway_url, s3_bucket_name, secret_arn, storage_integration_name):
+def create_external_functions(snowflake_cursor, api_integration_name, auto_ml_role_arn, api_gateway_url, s3_bucket_name, secret_arn, storage_integration_name, snowflake_role_name):
     create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_createendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_createendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_describeendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_deleteendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway_url)
-    create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn)
+    create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn, snowflake_role_name)
     create_deleteendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_describeendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url)
-
 
 
 def create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_url):
@@ -299,9 +298,9 @@ def create_createendpointconfig_ef(snowflake_cursor, api_integration_name, api_g
         \"ProductionVariants\" : [ \
         { \
             \"InstanceType\": instanceType, \
-            \"ModelName\": modelName, \
+            \"ModelName\": modelName + \"-job-best-model\", \
             \"InitialInstanceCount\": instanceCount, \
-            \"VariantName\" : endpointConfigName + \"-variant\" \
+            \"VariantName\" : \"AllTrafficVariant\" \
         }] \
         }; \
         return {\"body\": payload}; \
@@ -494,13 +493,41 @@ def create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway
     snowflake_cursor.execute(create_predictoutcome_ef_str)
 
 
-def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn):
+def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn, snowflake_role_name):
     createmodel_serializer_str = ("create or replace function AWS_AUTOPILOT_CREATE_MODEL_SERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
         $$ \
         let modelname = EVENT.body.data[0][1]; \
         let targetTable = EVENT.body.data[0][2]; \
         let targetCol = EVENT.body.data[0][3]; \
+        let problemType = \"Auto\"; \
+        let maxRunningTime = 7200; \
+        let deployModel = true; \
+        let modelEndpointTTL = 7*24*60*60 // 7 days \
+        let objectiveMetric; \
+        \
+        if (EVENT.body.data[0].length == 8) { \
+            if (EVENT.body.data[0][4] != undefined) { \
+                objectiveMetric = EVENT.body.data[0][4]; \
+            } \
+            \
+            if (EVENT.body.data[0][5] != undefined) { \
+                problemType = EVENT.body.data[0][5]; \
+            } \
+            \
+            if (EVENT.body.data[0][6] != undefined) { \
+                maxRunningTime = EVENT.body.data[0][6]; \
+            } \
+            \
+            if (EVENT.body.data[0][7] != undefined) { \
+                deployModel = EVENT.body.data[0][7]; \
+            } \
+            \
+            if (EVENT.body.data[0][8] != undefined) { \
+                modelEndpointTTL = EVENT.body.data[0][8]; \
+            } \
+        } \
+        \
         let contextHeaders = EVENT.contextHeaders; \
         let jobDatasetsPath = modelname + \"-job/datasets/\" ; \
         let databaseName = contextHeaders[\"sf-context-current-database\"]; \
@@ -519,7 +546,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         let payload = { \
             \"AutoMLJobConfig\": { \
             \"CompletionCriteria\": { \
-                \"MaxAutoMLJobRuntimeInSeconds\": 7200 \
+                \"MaxAutoMLJobRuntimeInSeconds\": maxRunningTime \
             } \
             }, \
             \"AutoMLJobName\": modelname + \"-job\", \
@@ -537,13 +564,10 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
                     \"EndpointName\": modelname,\
                     \"EndpointConfigName\": modelname + \"-m5-24xl-3\",\
                     \"DeletionCondition\": {\
-                    \"MaxRuntimeInSeconds\": 7200\
+                    \"MaxRuntimeInSeconds\": modelEndpointTTL\
                     }\
                 }\
                 ]\
-            },\
-            \"AutoMLJobObjective\": {\
-            \"MetricName\": \"Accuracy\"\
             },\
             \"InputDataConfig\": [\
             {\
@@ -554,7 +578,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
                     \"Database\": databaseName,\
                     \"Schema\": schemaName,\
                     \"TableName\": targetTable,\
-                    \"SnowflakeRole\": \"ACCOUNTADMIN\",\
+                    \"SnowflakeRole\": \"%s\",\
                     \"SecretArn\": \"%s\",\
                     \"OutputS3Uri\": s3OutputUri + jobDatasetsPath,\
                     \"StorageIntegration\": \"%s\"\
@@ -565,12 +589,19 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
             \"OutputDataConfig\": {\
             \"S3OutputPath\": s3OutputUri\
             },\
-            \"ProblemType\": \"MulticlassClassification\",\
+            \"ProblemType\": problemType,\
             \"RoleArn\": \"%s\"\
         };\
         \
+        \
+        if (objectiveMetric != undefined) { \
+            payload[\"AutoMLJobObjective\"] = { \
+                \"MetricName\": objectiveMetric\
+            };\
+        }\
+        \
         return {\"body\": JSON.stringify(payload)}; \
-        $$;") % (s3_bucket_name, secret_arn, storage_integration_name, auto_ml_role_arn)
+        $$;") % (s3_bucket_name, snowflake_role_name, secret_arn, storage_integration_name, auto_ml_role_arn)
 
     snowflake_cursor.execute(createmodel_serializer_str)
 
@@ -594,6 +625,19 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
     as '%s/createmodel';") % (api_integration_name, api_gateway_url)
 
     snowflake_cursor.execute(create_createmodel_ef_str)
+
+    create_createmodel_ef_str2 = ("create or replace external function AWS_AUTOPILOT_CREATE_MODEL(modelname varchar, targettable varchar, \
+    targetcol varchar, objective_metric varchar, problem_type varchar, max_running_time integer, deploy_model boolean, model_endpoint_ttl integer) \
+    returns variant \
+    api_integration = \"%s\" \
+    context_headers  = (CURRENT_DATABASE, CURRENT_SCHEMA, CURRENT_WAREHOUSE) \
+    serializer = AWS_AUTOPILOT_CREATE_MODEL_SERIALIZER \
+    deserializer=AWS_AUTOPILOT_CREATE_MODEL_DESERIALIZER \
+    max_batch_rows=1 \
+    as '%s/createmodel';") % (api_integration_name, api_gateway_url)
+
+    snowflake_cursor.execute(create_createmodel_ef_str2)
+
 
 def get_storage_integration_info_for_policy(snowflake_cursor, storage_integration_name):
     logger.info("Describing Storage Integration")
