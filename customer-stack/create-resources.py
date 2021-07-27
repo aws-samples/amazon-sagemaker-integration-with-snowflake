@@ -235,7 +235,7 @@ def create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_
         response[\"PartialFailureReasons\"] = responseBody.PartialFailureReasons;\
         response[\"AutoMLJobSecondaryStatus\"] = responseBody.AutoMLJobSecondaryStatus;\
         \
-        return {\"body\":{   \"data\" : [[0,response]]  }} \
+        return {\"body\":{   \"data\" : [[0,response]]  }};\
         $$;")
 
     snowflake_cursor.execute(describemodel_deserializer_str)
@@ -557,9 +557,9 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
                 \"ModelDeployMode\": \"Endpoint\",\
                 \"EndpointConfigDefinitions\": [\
                 {\
-                    \"EndpointConfigName\":  modelname + \"-m5-24xl-2\",\
+                    \"EndpointConfigName\":  modelname + \"-m5-4xl-2\",\
                     \"InitialInstanceCount\": 2,\
-                    \"InstanceType\": \"ml.m5.24xlarge\"\
+                    \"InstanceType\": \"ml.m5.4xlarge\"\
                 }\
                 ],\
                 \"EndpointDefinitions\": [\
