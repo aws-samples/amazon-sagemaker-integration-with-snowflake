@@ -29,7 +29,7 @@ Parameters:
   apiGatewayStageName:
     Type: "String"
     AllowedPattern: "^[-a-zA-Z0-9]+$"
-    Default: "snowflake-autopilot-stage"
+    Default: "main"
     Description: "API deployment stage"
     MinLength: 1
   codeBucket:

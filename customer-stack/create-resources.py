@@ -223,7 +223,7 @@ def create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_
         let response ={}; \
         response[\"JobStatus\"] = responseBody.AutoMLJobStatus; \
         response[\"JobStatusDetails\"] = responseBody.AutoMLJobSecondaryStatus; \
-            if (responseBody.AutoMLJobStatus === \"Completed\") \
+        if (responseBody.AutoMLJobStatus === \"Completed\") \
         { \
         response[\"ObjectiveMetric\"] = responseBody.BestCandidate.FinalAutoMLJobObjectiveMetric.MetricName; \
         response[\"BestObjectiveMetric\"] = responseBody.BestCandidate.FinalAutoMLJobObjectiveMetric.Value; \
@@ -231,7 +231,11 @@ def create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_
         {\
             response[\"FailureReason\"] = responseBody.FailureReason;\
         }\
-        return {\"body\":{   \"data\" : [[0,response]]  }} \
+        \
+        response[\"PartialFailureReasons\"] = responseBody.PartialFailureReasons;\
+        response[\"AutoMLJobSecondaryStatus\"] = responseBody.AutoMLJobSecondaryStatus;\
+        \
+        return {\"body\":{   \"data\" : [[0,response]]  }};\
         $$;")
 
     snowflake_cursor.execute(describemodel_deserializer_str)
@@ -553,9 +557,9 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
                 \"ModelDeployMode\": \"Endpoint\",\
                 \"EndpointConfigDefinitions\": [\
                 {\
-                    \"EndpointConfigName\":  modelname + \"-m5-24xl-3\",\
-                    \"InitialInstanceCount\": 3,\
-                    \"InstanceType\": \"ml.m5.24xlarge\"\
+                    \"EndpointConfigName\":  modelname + \"-m5-4xl-2\",\
+                    \"InitialInstanceCount\": 2,\
+                    \"InstanceType\": \"ml.m5.4xlarge\"\
                 }\
                 ],\
                 \"EndpointDefinitions\": [\
@@ -612,7 +616,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         returns OBJECT LANGUAGE JAVASCRIPT AS \
         $$ \
         let arn = EVENT.body.AutoMLJobArn; \
-        let message = \"Model creation in progress. Model ARN = \" + arn; \
+        let message = \"Model creation in progress. Job ARN = \" + arn; \
         return {\"body\": {   \"data\" : [[0, message]]  }} \
         $$;")
 
