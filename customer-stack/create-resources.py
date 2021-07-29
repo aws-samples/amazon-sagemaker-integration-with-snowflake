@@ -1,7 +1,6 @@
 import json
 import boto3
 import os
-import time
 import logging
 from botocore.exceptions import ClientError
 import requests
@@ -35,24 +34,23 @@ def lambda_handler(event, context):
     database_name = os.environ['DatabaseName']
     schema_name = os.environ['SchemaName']
 
-
+    logger.info("api_gateway_url: " + api_gateway_url)
     logger.info("api_gateway_role_arn: " + api_gateway_role_arn)
     logger.info("api_gateway_role_name: " + api_gateway_role_name)
     logger.info("auto_ml_role_arn: " + auto_ml_role_arn)
     logger.info("auto_ml_role_name: " + auto_ml_role_name)
+    logger.info("region_name: " + region_name)
     logger.info("s3_bucket_name: " + s3_bucket_name)
     logger.info("region_name: " + region_name)
     logger.info("secret_name: " + secret_name)
     logger.info("snowflake_role_name: " + snowflake_role_name)
+    logger.info("stack_name: " + stack_name)
     logger.info("database_name: " + database_name)
     logger.info("schema_name: " + schema_name)
 
-    # Initialize integration related variables
-    storage_integration_info = {}
-    api_integration_info = {}
-
     # Delete
     if event['RequestType'] == 'Delete':
+        logger.info("No action for Delete. Exiting.")
         sendResponse(event, context, SUCCESS, EMPTY_RESPONSE_DATA)
         return
 
@@ -79,8 +77,8 @@ def lambda_handler(event, context):
         
         snowflake_cursor.execute(("use schema %s;") % (schema_name))
 
-        storage_integration_name = "AWS_AUTOPILOT_API_INTEGRATION" + "_" + stack_name
-        api_integration_name = "AWS_AUTOPILOT_STORAGE_INTEGRATION" + "_" + stack_name
+        storage_integration_name = "AWS_AUTOPILOT_STORAGE_INTEGRATION" + "_" + stack_name
+        api_integration_name = "AWS_AUTOPILOT_API_INTEGRATION" + "_" + stack_name
 
         # Create Snowflake Integrations
         create_storage_integration(snowflake_cursor, storage_integration_name, auto_ml_role_arn, s3_bucket_name)
@@ -167,7 +165,8 @@ def sendResponse(event, context, responseStatus, responseData):
     return
 
 def create_storage_integration(snowflake_cursor, storage_integration_name, auto_ml_role_arn, s3_bucket_name):
-    logger.info("Creating Storage Integration")
+    logger.info("Creating Storage Integration [storage_integration_name=%s, auto_ml_role_arn=%s, s3_bucket_name=%s]",
+                storage_integration_name, auto_ml_role_arn, s3_bucket_name)
 
     storage_integration_str = ("create or replace storage integration \"%s\" \
     type = external_stage \
@@ -179,7 +178,8 @@ def create_storage_integration(snowflake_cursor, storage_integration_name, auto_
     snowflake_cursor.execute(storage_integration_str)
 
 def create_api_integration(snowflake_cursor, api_integration_name, api_gateway_role_arn, api_gateway_url):
-    logger.info("Creating API Integration")
+    logger.info("Creating API Integration [api_integration_name=%s, api_gateway_role_arn=%s, api_gateway_url=%s]",
+                api_integration_name, api_gateway_role_arn, api_gateway_url)
 
     api_integration_str = ("create or replace api integration \"%s\" \
     api_provider = aws_api_gateway \
@@ -204,6 +204,8 @@ def create_external_functions(snowflake_cursor, api_integration_name, auto_ml_ro
 
 
 def create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    logger.info("Creating External function: AWS_AUTOPILOT_DESCRIBE_MODEL [api_integration_name=%s, api_gateway_url=%s]", api_integration_name, api_gateway_url)
+
     describemodel_serializer_str = ("create or replace function AWS_AUTOPILOT_DESCRIBE_MODEL_SERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
         $$ \
@@ -212,7 +214,7 @@ def create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_
             \"AutoMLJobName\" : item + \"-job\" \
         }; \
         return {\"body\": JSON.stringify(payload)};\
-        $$") 
+        $$")
 
     snowflake_cursor.execute(describemodel_serializer_str)
 
@@ -252,6 +254,8 @@ def create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_
 
 
 def create_createendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    logger.info("Creating External function: AWS_AUTOPILOT_CREATE_ENDPOINT [api_integration_name=%s, api_gateway_url=%s]", api_integration_name, api_gateway_url)
+
     createendpoint_serializer_str = ("create or replace function AWS_AUTOPILOT_CREATE_ENDPOINT_SERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
         $$ \
@@ -289,6 +293,8 @@ def create_createendpoint_ef(snowflake_cursor, api_integration_name, api_gateway
 
 
 def create_createendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    logger.info("Creating External function: AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG [api_integration_name=%s, api_gateway_url=%s]", api_integration_name, api_gateway_url)
+
     createendpointconfig_serializer_str = ("create or replace function AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG_SERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
         $$ \
@@ -330,6 +336,8 @@ def create_createendpointconfig_ef(snowflake_cursor, api_integration_name, api_g
     snowflake_cursor.execute(create_createendpointconfig_ef_str)
 
 def create_describeendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    logger.info("Creating External function: AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG [api_integration_name=%s, api_gateway_url=%s]", api_integration_name, api_gateway_url)
+
     describeendpointconfig_serializer_str = ("create or replace function AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG_SERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
         $$ \
@@ -361,6 +369,8 @@ def create_describeendpointconfig_ef(snowflake_cursor, api_integration_name, api
     snowflake_cursor.execute(create_describeendpointconfig_ef_str)
 
 def create_deleteendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    logger.info("Creating External function: AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG [api_integration_name=%s, api_gateway_url=%s]", api_integration_name, api_gateway_url)
+
     deleteendpointconfig_serializer_str = ("create or replace function AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG_SERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
         $$ \
@@ -392,6 +402,8 @@ def create_deleteendpointconfig_ef(snowflake_cursor, api_integration_name, api_g
     snowflake_cursor.execute(create_deleteendpointconfig_ef_str)
 
 def create_describeendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    logger.info("Creating External function: AWS_AUTOPILOT_DESCRIBE_ENDPOINT [api_integration_name=%s, api_gateway_url=%s]", api_integration_name, api_gateway_url)
+
     describeendpoint_serializer_str = ("create or replace function AWS_AUTOPILOT_DESCRIBE_ENDPOINT_SERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
         $$ \
@@ -424,6 +436,8 @@ def create_describeendpoint_ef(snowflake_cursor, api_integration_name, api_gatew
 
 
 def create_deleteendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    logger.info("Creating External function: AWS_AUTOPILOT_DELETE_ENDPOINT [api_integration_name=%s, api_gateway_url=%s]", api_integration_name, api_gateway_url)
+
     deleteendpoint_serializer_str = ("create or replace function AWS_AUTOPILOT_DELETE_ENDPOINT_SERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
         $$ \
@@ -456,6 +470,8 @@ def create_deleteendpoint_ef(snowflake_cursor, api_integration_name, api_gateway
 
 
 def create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway_url):
+    logger.info("Creating External function: AWS_AUTOPILOT_PREDICT_OUTCOME [api_integration_name=%s, api_gateway_url=%s]", api_integration_name, api_gateway_url)
+
     predictoutcome_serializer_str = ("create or replace function AWS_AUTOPILOT_PREDICT_OUTCOME_SERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
         $$ \
@@ -497,6 +513,11 @@ def create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway
 
 
 def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn, snowflake_role_name):
+    logger.info(
+        "Creating External function: AWS_AUTOPILOT_CREATE_MODEL [api_integration_name=%s, api_gateway_url=%s, secret_arn=%s, s3_bucket_name=%s, storage_integration_name=%s, auto_ml_role_arn=%s, snowflake_role_name=%s]",
+        api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn,
+        snowflake_role_name)
+
     createmodel_serializer_str = ("create or replace function AWS_AUTOPILOT_CREATE_MODEL_SERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
         $$ \
@@ -504,7 +525,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         let targetTable = EVENT.body.data[0][2]; \
         let targetCol = EVENT.body.data[0][3]; \
         let maxRunningTime = 7200; \
-        let deployModel = true; \
+        let deployModel = true; /* TODO: Unused for now */ \
         let modelEndpointTTL = 7*24*60*60; \
         let problemType; \
         let objectiveMetric; \
@@ -536,7 +557,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         let databaseName = contextHeaders[\"sf-context-current-database\"]; \
         let schemaName = contextHeaders[\"sf-context-current-schema\"]; \
         let tableNameComponents = targetTable.split(\".\"); \
-        let s3OutputUri = \"s3://\" + \"%s\" + \"/output/\"; \
+        let s3OutputUri = \"s3://%s/output/\"; \
         if (tableNameComponents.length === 3) \
         {\
             databaseName = tableNameComponents[0]; \
@@ -565,7 +586,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
                 \"EndpointDefinitions\": [\
                 {\
                     \"EndpointName\": modelname,\
-                    \"EndpointConfigName\": modelname + \"-m5-24xl-3\",\
+                    \"EndpointConfigName\": modelname + \"-m5-4xl-2\",\
                     \"DeletionCondition\": {\
                     \"MaxRuntimeInSeconds\": modelEndpointTTL\
                     }\
@@ -592,7 +613,6 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
             \"OutputDataConfig\": {\
             \"S3OutputPath\": s3OutputUri\
             },\
-            \"ProblemType\": problemType,\
             \"RoleArn\": \"%s\"\
         };\
         \
