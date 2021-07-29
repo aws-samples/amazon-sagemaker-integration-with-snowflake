@@ -29,6 +29,7 @@ def lambda_handler(event, context):
     region_name = os.environ['Region']
     s3_bucket_name = os.environ['S3BucketName']
     secret_name = os.environ['SecretArn']
+    kms_key_arn = os.environ['KmsKeyArn']
     snowflake_role_name = os.environ['SnowflakeRole']
     stack_name = os.environ['StackName']
     database_name = os.environ['DatabaseName']
@@ -41,8 +42,8 @@ def lambda_handler(event, context):
     logger.info("auto_ml_role_name: " + auto_ml_role_name)
     logger.info("region_name: " + region_name)
     logger.info("s3_bucket_name: " + s3_bucket_name)
-    logger.info("region_name: " + region_name)
     logger.info("secret_name: " + secret_name)
+    logger.info("kms_key_arn: " + kms_key_arn)
     logger.info("snowflake_role_name: " + snowflake_role_name)
     logger.info("stack_name: " + stack_name)
     logger.info("database_name: " + database_name)
@@ -83,7 +84,7 @@ def lambda_handler(event, context):
         # Create Snowflake Integrations
         create_storage_integration(snowflake_cursor, storage_integration_name, auto_ml_role_arn, s3_bucket_name)
         create_api_integration(snowflake_cursor, api_integration_name, api_gateway_role_arn, api_gateway_url)
-        create_external_functions(snowflake_cursor, api_integration_name, auto_ml_role_arn, api_gateway_url, s3_bucket_name, secret_name, storage_integration_name, snowflake_role_name)
+        create_external_functions(snowflake_cursor, api_integration_name, auto_ml_role_arn, api_gateway_url, s3_bucket_name, secret_name, storage_integration_name, snowflake_role_name, kms_key_arn)
 
         # Describe Snowflake integrations
         storage_integration_info = get_storage_integration_info_for_policy(snowflake_cursor, storage_integration_name)
@@ -191,14 +192,14 @@ def create_api_integration(snowflake_cursor, api_integration_name, api_gateway_r
     snowflake_cursor.execute(api_integration_str)
 
 
-def create_external_functions(snowflake_cursor, api_integration_name, auto_ml_role_arn, api_gateway_url, s3_bucket_name, secret_arn, storage_integration_name, snowflake_role_name):
+def create_external_functions(snowflake_cursor, api_integration_name, auto_ml_role_arn, api_gateway_url, s3_bucket_name, secret_arn, storage_integration_name, snowflake_role_name, kms_key_arn):
     create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_createendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_createendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_describeendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_deleteendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway_url)
-    create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn, snowflake_role_name)
+    create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn, snowflake_role_name, kms_key_arn)
     create_deleteendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_describeendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url)
 
@@ -512,11 +513,11 @@ def create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway
     snowflake_cursor.execute(create_predictoutcome_ef_str)
 
 
-def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn, snowflake_role_name):
+def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn, snowflake_role_name, kms_key_arn):
     logger.info(
-        "Creating External function: AWS_AUTOPILOT_CREATE_MODEL [api_integration_name=%s, api_gateway_url=%s, secret_arn=%s, s3_bucket_name=%s, storage_integration_name=%s, auto_ml_role_arn=%s, snowflake_role_name=%s]",
+        "Creating External function: AWS_AUTOPILOT_CREATE_MODEL [api_integration_name=%s, api_gateway_url=%s, secret_arn=%s, s3_bucket_name=%s, storage_integration_name=%s, auto_ml_role_arn=%s, snowflake_role_name=%s, kms_key_arn=%s]",
         api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn,
-        snowflake_role_name)
+        snowflake_role_name, kms_key_arn)
 
     createmodel_serializer_str = ("create or replace function AWS_AUTOPILOT_CREATE_MODEL_SERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
@@ -558,6 +559,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         let schemaName = contextHeaders[\"sf-context-current-schema\"]; \
         let tableNameComponents = targetTable.split(\".\"); \
         let s3OutputUri = \"s3://%s/output/\"; \
+        let kmsKeyArn = \"%s\"; \
         if (tableNameComponents.length === 3) \
         {\
             databaseName = tableNameComponents[0]; \
@@ -616,19 +618,25 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
             \"RoleArn\": \"%s\"\
         };\
         \
-        \
-        if (objectiveMetric != undefined) { \
+        if (objectiveMetric) { \
             payload[\"AutoMLJobObjective\"] = { \
                 \"MetricName\": objectiveMetric\
             };\
         }\
-        \
-        if (problemType != undefined) { \
+        if (problemType) { \
             payload[\"ProblemType\"] = problemType;\
+        }\
+        if (kmsKeyArn) { \
+            payload[\"OutputDataConfig\"][\"KmsKeyId\"] = kmsKeyArn;\
+            payload[\"InputDataConfig\"][\"AutoMLSnowflakeDatasetDefinition\"][\"KmsKeyId\"] = kmsKeyArn;\
+            payload[\"AutoMLJobConfig\"][\"SecurityConfig\"] = { \
+                \"VolumeKmsKeyId\": kmsKeyArn,\
+                \"EnableInterContainerTrafficEncryption\": true\
+            };\
         }\
         \
         return {\"body\": JSON.stringify(payload)}; \
-        $$;") % (s3_bucket_name, snowflake_role_name, secret_arn, storage_integration_name, auto_ml_role_arn)
+        $$;") % (s3_bucket_name, kms_key_arn, snowflake_role_name, secret_arn, storage_integration_name, auto_ml_role_arn)
 
     snowflake_cursor.execute(createmodel_serializer_str)
 

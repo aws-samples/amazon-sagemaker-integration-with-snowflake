@@ -8,6 +8,11 @@ Parameters:
     Type: String
     Description: "ARN of the AWS Secret containing the Snowflake login information"
     MinLength: 1
+  kmsKeyArn:
+    Type: String
+    AllowedPattern: "^(arn:aws[a-z-]*:kms:[a-z0-9-]*:[0-9]{12}:key\\/.+)?$"
+    Default: ""
+    Description: "ARN of the AWS Key Management Service key that Amazon SageMaker uses to encrypt job outputs. The KmsKeyId is applied to all outputs."
   snowflakeRole:
     Type: String
     Description: "Snowflake Role with permissions to create Storage Integrations, API Integrations and Functions"
@@ -47,36 +52,17 @@ Parameters:
     Description: "Path within codeBucket where the lambda code is (example: libraries/create-resources-0.1.zip)"
     Default: "libraries/create-resources-0.1.zip"
     MinLength: 1
+Conditions:
+  KMSKeyArnProvided: !Not
+    - !Equals
+      - !Ref kmsKeyArn
+      - ""
 Resources:
-  KMSKey:
-    Type: AWS::KMS::Key
-    Properties:
-      KeyPolicy:
-        Version: '2012-10-17'
-        Id: key-access-for-account
-        Statement:
-        - Sid: Enable IAM User Permissions
-          Effect: Allow
-          Principal:
-            AWS:
-              Fn::Join:
-              - ''
-              - - 'arn:aws:iam::'
-                - Ref: AWS::AccountId
-                - :root
-          Action: kms:*
-          Resource: '*'
   S3Bucket:
     Type: 'AWS::S3::Bucket'
     DeletionPolicy: Retain
     Properties:
       BucketName: !Ref s3BucketName
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: 'aws:kms'
-              KMSMasterKeyID: !GetAtt KMSKey.Arn
-            BucketKeyEnabled: true
       VersioningConfiguration:
         Status: Enabled
   SnowflakeAutoMLExecutionRole:
@@ -132,7 +118,10 @@ Resources:
                       - !Ref AWS::Region
                       - !Ref AWS::AccountId
                       - "alias/aws/secretsmanager"
-                  - !GetAtt KMSKey.Arn
+                  - !If
+                    - KMSKeyArnProvided
+                    - !Ref kmsKeyArn
+                    - !Ref AWS::NoValue
         - PolicyName: secrets-permissions
           PolicyDocument:
             Version: 2012-10-17
@@ -201,7 +190,10 @@ Resources:
                       - !Ref AWS::Region
                       - !Ref AWS::AccountId
                       - "alias/aws/secretsmanager"
-                  - !GetAtt KMSKey.Arn
+                  - !If
+                    - KMSKeyArnProvided
+                    - !Ref kmsKeyArn
+                    - !Ref AWS::NoValue
   CopyZipsRole:
     Type: AWS::IAM::Role
     Properties:
@@ -219,28 +211,6 @@ Resources:
       ManagedPolicyArns:
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/CloudWatchLogsFullAccess'
       Policies:
-        - PolicyName: kms-permissions
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'kms:CreateGrant'
-                  - "kms:Decrypt"
-                  - "kms:DescribeKey"
-                  - "kms:Encrypt"
-                  - "kms:GenerateDataKey*"
-                  - "kms:ReEncrypt*"
-                Resource:
-                  - !Join
-                    - ":"
-                    - - "arn"
-                      - !Ref AWS::Partition
-                      - "kms"
-                      - !Ref AWS::Region
-                      - !Ref AWS::AccountId
-                      - "alias/aws/secretsmanager"
-                  - !GetAtt KMSKey.Arn
         - PolicyName: s3-dest-permissions
           PolicyDocument:
             Version: 2012-10-17
@@ -279,28 +249,6 @@ Resources:
       ManagedPolicyArns:
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/CloudWatchLogsFullAccess'
       Policies:
-        - PolicyName: kms-permissions
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'kms:CreateGrant'
-                  - "kms:Decrypt"
-                  - "kms:DescribeKey"
-                  - "kms:Encrypt"
-                  - "kms:GenerateDataKey*"
-                  - "kms:ReEncrypt*"
-                Resource:
-                  - !Join
-                    - ":"
-                    - - "arn"
-                      - !Ref AWS::Partition
-                      - "kms"
-                      - !Ref AWS::Region
-                      - !Ref AWS::AccountId
-                      - "alias/aws/secretsmanager"
-                  - !GetAtt KMSKey.Arn
         - PolicyName: secrets-permissions
           PolicyDocument:
             Version: 2012-10-17
@@ -841,6 +789,7 @@ Resources:
           Region: !Sub "${AWS::Region}"
           S3BucketName: !Ref s3BucketName
           SecretArn: !Ref snowflakeSecretArn
+          KmsKeyArn: !Ref kmsKeyArn
           SnowflakeRole: !Ref snowflakeRole
           StackName: !Sub "${AWS::StackName}"
           DatabaseName: !Ref snowflakeDatabaseName
