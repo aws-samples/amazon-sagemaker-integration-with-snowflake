@@ -60,11 +60,9 @@ Conditions:
 Resources:
   S3Bucket:
     Type: 'AWS::S3::Bucket'
-    DeletionPolicy: Retain
+    DeletionPolicy: Delete
     Properties:
       BucketName: !Ref s3BucketName
-      VersioningConfiguration:
-        Status: Enabled
   SnowflakeAutoMLExecutionRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -218,6 +216,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - 's3:PutObject'
+                  - 's3:DeleteObject'
                 Resource:
                   - !Join
                     - ''
@@ -677,6 +676,7 @@ Resources:
     Properties:
       Code:
         ZipFile: |
+          # Inspired by https://aws.amazon.com/blogs/infrastructure-and-automation/deploying-aws-lambda-functions-using-aws-cloudformation-the-portable-way/
           import boto3
           import json
           import logging
@@ -692,33 +692,33 @@ Resources:
           logger.setLevel(logging.INFO)
 
           def lambda_handler(event, context):
-            logger.info('Starting the copy of shared libraries')
-            # Delete
-            if event['RequestType'] == 'Delete':
-                sendResponse(event, context, SUCCESS, EMPTY_RESPONSE_DATA)
-                return
+              logger.info('Starting CopyZipsLambda')
 
-            try:
-                s3_destination_bucket_name = event['ResourceProperties']['DestBucket']
-                s3_source_bucket_name = event['ResourceProperties']['SourceBucket']
-                object_keys = event['ResourceProperties']['ObjectKeys']
+              try:
+                  s3_destination_bucket_name = event['ResourceProperties']['DestBucket']
+                  s3_source_bucket_name = event['ResourceProperties']['SourceBucket']
+                  object_keys = event['ResourceProperties']['ObjectKeys']
 
-                copy_objects(s3_source_bucket_name, s3_destination_bucket_name, object_keys)
-                logger.info("Shared files copied successfully")
+                  if event['RequestType'] != 'Delete':
+                      copy_objects(s3_source_bucket_name, s3_destination_bucket_name, object_keys)
+                      logger.info("Files copied successfully")
+                  else:
+                      delete_objects(s3_destination_bucket_name, object_keys)
+                      logger.info("Files deleted successfully")
 
-                sendResponse(event, context, SUCCESS, EMPTY_RESPONSE_DATA)
-                logger.info('Copy of shared libraries finished')
-            except:
-                logger.exception("There was a problem copying the files")
-                sendResponse(event, context, FAILED, EMPTY_RESPONSE_DATA)
-                return
+                  sendResponse(event, context, SUCCESS, EMPTY_RESPONSE_DATA)
+                  logger.info('CopyZipsLambda finished')
+              except:
+                  logger.exception("There was a problem running CopyZipsLambda")
+                  sendResponse(event, context, FAILED, EMPTY_RESPONSE_DATA)
+                  return
 
           def copy_objects(s3_source_bucket_name, s3_destination_bucket_name, object_keys):
-                s3 = boto3.resource('s3')
-                destination_bucket = s3.Bucket(s3_destination_bucket_name)
+              s3 = boto3.resource('s3')
+              destination_bucket = s3.Bucket(s3_destination_bucket_name)
 
-                for object_key in object_keys:
-                  copy_object(s3_source_bucket_name, destination_bucket, object_key)
+              for object_key in object_keys:
+                copy_object(s3_source_bucket_name, destination_bucket, object_key)
 
           def copy_object(s3_source_bucket_name, destination_bucket, object_key):
               logger.info('Copying object key: ' + object_key)
@@ -727,6 +727,16 @@ Resources:
                   'Key': object_key
               }
               destination_bucket.copy(copy_source, object_key)
+
+          def delete_objects(s3_destination_bucket_name, object_keys):
+              s3 = boto3.client('s3')
+
+              for object_key in object_keys:
+                  delete_object(s3, s3_destination_bucket_name, object_key)
+
+          def delete_object(s3, s3_destination_bucket_name, object_key):
+              logger.info('Deleting object key: ' + object_key)
+              s3.delete_object(Bucket=s3_destination_bucket_name, Key=object_key)
 
           def sendResponse(event, context, responseStatus, responseData):
               responseBody = {'Status': responseStatus,
