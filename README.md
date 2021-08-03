@@ -99,8 +99,8 @@ These parameters are needed to create the stack.
 * s3BucketName: "Name of the S3 bucket to be created to store the training data and artifacts produced by the AutoML jobs"
 * snowflakeSecretArn: "ARN of the AWS Secret containing the Snowflake login information"
 * kmsKeyArn (Optional): "ARN of the AWS Key Management Service key that Amazon SageMaker uses to encrypt job outputs. The KmsKeyId is applied to all outputs."
-* vpcSecurityGroups: (Optional) Comma separated list of security group ids for VPC configuration
-* vpcSubnets: (Optional) Comma separated list of subnet ids for VPC configuration
+* vpcSecurityGroups: (Optional) Comma delimited list of security group ids for VPC configuration
+* vpcSubnets: (Optional) Comma delimited list of subnet ids for VPC configuration ()
 * snowflakeRole (Optional):"Snowflake Role with permissions to create Storage and API Integrations"
 * snowflakeDatabaseName: "Snowflake Database in which external functions will be created"
 * snowflakeSchemaName: "Snowflake Database Schema in which external functions will be created"
