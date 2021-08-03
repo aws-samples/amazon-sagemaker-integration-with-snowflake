@@ -30,6 +30,8 @@ def lambda_handler(event, context):
     s3_bucket_name = os.environ['S3BucketName']
     secret_name = os.environ['SecretArn']
     kms_key_arn = os.environ['KmsKeyArn']
+    vpc_security_groups = os.environ['VpcSecurityGroups']
+    vpc_subnets = os.environ['VpcSubnets']
     snowflake_role_name = os.environ['SnowflakeRole']
     stack_name = os.environ['StackName']
     database_name = os.environ['DatabaseName']
@@ -44,6 +46,8 @@ def lambda_handler(event, context):
     logger.info("s3_bucket_name: " + s3_bucket_name)
     logger.info("secret_name: " + secret_name)
     logger.info("kms_key_arn: " + kms_key_arn)
+    logger.info("vpc_security_groups: " + vpc_security_groups)
+    logger.info("vpc_subnets: " + vpc_subnets)
     logger.info("snowflake_role_name: " + snowflake_role_name)
     logger.info("stack_name: " + stack_name)
     logger.info("database_name: " + database_name)
@@ -84,7 +88,9 @@ def lambda_handler(event, context):
         # Create Snowflake Integrations
         create_storage_integration(snowflake_cursor, storage_integration_name, auto_ml_role_arn, s3_bucket_name)
         create_api_integration(snowflake_cursor, api_integration_name, api_gateway_role_arn, api_gateway_url)
-        create_external_functions(snowflake_cursor, api_integration_name, auto_ml_role_arn, api_gateway_url, s3_bucket_name, secret_name, storage_integration_name, snowflake_role_name, kms_key_arn)
+        create_external_functions(snowflake_cursor, api_integration_name, auto_ml_role_arn, api_gateway_url,
+                                  s3_bucket_name, secret_name, storage_integration_name, snowflake_role_name,
+                                  kms_key_arn, vpc_security_groups, vpc_subnets)
 
         # Describe Snowflake integrations
         storage_integration_info = get_storage_integration_info_for_policy(snowflake_cursor, storage_integration_name)
@@ -192,14 +198,18 @@ def create_api_integration(snowflake_cursor, api_integration_name, api_gateway_r
     snowflake_cursor.execute(api_integration_str)
 
 
-def create_external_functions(snowflake_cursor, api_integration_name, auto_ml_role_arn, api_gateway_url, s3_bucket_name, secret_arn, storage_integration_name, snowflake_role_name, kms_key_arn):
+def create_external_functions(snowflake_cursor, api_integration_name, auto_ml_role_arn, api_gateway_url, s3_bucket_name,
+                              secret_arn, storage_integration_name, snowflake_role_name,
+                              kms_key_arn, vpc_security_groups, vpc_subnets):
     create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_createendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_createendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_describeendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_deleteendpoint_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway_url)
-    create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn, snowflake_role_name, kms_key_arn)
+    create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name,
+                          storage_integration_name, auto_ml_role_arn, snowflake_role_name,
+                          kms_key_arn, vpc_security_groups, vpc_subnets)
     create_deleteendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url)
     create_describeendpointconfig_ef(snowflake_cursor, api_integration_name, api_gateway_url)
 
@@ -513,11 +523,17 @@ def create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway
     snowflake_cursor.execute(create_predictoutcome_ef_str)
 
 
-def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn, snowflake_role_name, kms_key_arn):
+def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_url, secret_arn, s3_bucket_name,
+                          storage_integration_name, auto_ml_role_arn, snowflake_role_name,
+                          kms_key_arn, vpc_security_groups, vpc_subnets):
     logger.info(
-        "Creating External function: AWS_AUTOPILOT_CREATE_MODEL [api_integration_name=%s, api_gateway_url=%s, secret_arn=%s, s3_bucket_name=%s, storage_integration_name=%s, auto_ml_role_arn=%s, snowflake_role_name=%s, kms_key_arn=%s]",
+        "Creating External function: AWS_AUTOPILOT_CREATE_MODEL [api_integration_name=%s, api_gateway_url=%s, secret_arn=%s, s3_bucket_name=%s, storage_integration_name=%s, auto_ml_role_arn=%s, snowflake_role_name=%s, kms_key_arn=%s, vpc_security_groups=%s, vpc_subnets=%s]",
         api_integration_name, api_gateway_url, secret_arn, s3_bucket_name, storage_integration_name, auto_ml_role_arn,
-        snowflake_role_name, kms_key_arn)
+        snowflake_role_name, kms_key_arn, vpc_security_groups, vpc_subnets)
+
+    vpc_security_groups_with_quotes = add_quotes_to_comma_delimited_list_items(vpc_security_groups)
+    vpc_subnets_with_quotes = add_quotes_to_comma_delimited_list_items(vpc_subnets)
+    logger.info("vpc_security_groups_with_quotes = %s, vpc_subnets_with_quotes = %s", vpc_security_groups_with_quotes, vpc_subnets_with_quotes)
 
     createmodel_serializer_str = ("create or replace function AWS_AUTOPILOT_CREATE_MODEL_SERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
@@ -560,6 +576,8 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         let tableNameComponents = targetTable.split(\".\"); \
         let s3OutputUri = \"s3://%s/output/\"; \
         let kmsKeyArn = \"%s\"; \
+        let vpcSecurityGroupsArray = [%s]; \
+        let vpcSubnetsArray = [%s]; \
         if (tableNameComponents.length === 3) \
         {\
             databaseName = tableNameComponents[0]; \
@@ -634,9 +652,15 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
                 \"EnableInterContainerTrafficEncryption\": true\
             };\
         }\
+        if (vpcSecurityGroupsArray) { \
+            payload[\"AutoMLJobConfig\"][\"SecurityConfig\"][\"VpcConfig\"][\"SecurityGroupIds\"] = vpcSecurityGroupsArray; \
+        } \
+        if (vpcSubnetsArray) { \
+            payload[\"AutoMLJobConfig\"][\"SecurityConfig\"][\"VpcConfig\"][\"Subnets\"] = vpcSubnetsArray; \
+        } \
         \
         return {\"body\": JSON.stringify(payload)}; \
-        $$;") % (s3_bucket_name, kms_key_arn, snowflake_role_name, secret_arn, storage_integration_name, auto_ml_role_arn)
+        $$;") % (s3_bucket_name, kms_key_arn, vpc_security_groups_with_quotes, vpc_subnets_with_quotes, snowflake_role_name, secret_arn, storage_integration_name, auto_ml_role_arn)
 
     snowflake_cursor.execute(createmodel_serializer_str)
 
@@ -741,7 +765,15 @@ def update_assume_role_policy(policy_str, role_name):
     logger.info('Updating assume role policy for role: ' + role_name)
     logger.info('Policy used: ' + policy_str)
     iam = boto3.client('iam')
-    storage_response = iam.update_assume_role_policy(
+    iam.update_assume_role_policy(
         PolicyDocument=policy_str,
         RoleName=role_name
     )
+
+def add_quotes_to_comma_delimited_list_items(comma_delimited_list: str):
+    if comma_delimited_list:
+        vpc_subnets_array = comma_delimited_list.replace(" ", "").split(",")
+        comma_delimited_list_with_quotes = ', '.join('"' + item + '"' for item in vpc_subnets_array)
+    else:
+        comma_delimited_list_with_quotes = ''
+    return comma_delimited_list_with_quotes

@@ -13,6 +13,16 @@ Parameters:
     AllowedPattern: "^(arn:aws[a-z-]*:kms:[a-z0-9-]*:[0-9]{12}:key\\/.+)?$"
     Default: ""
     Description: "ARN of the AWS Key Management Service key that Amazon SageMaker uses to encrypt job outputs. The KmsKeyId is applied to all outputs."
+  vpcSecurityGroups:
+    Type: "String"
+    AllowedPattern: "^([-0-9a-zA-Z]+(,\\s*[-0-9a-zA-Z]+)*)?$"
+    Default: ""
+    Description: "Comma separated list of security group ids for VPC configuration"
+  vpcSubnets:
+    Type: "String"
+    AllowedPattern: "^([-0-9a-zA-Z]+(,\\s*[-0-9a-zA-Z]+)*)?$"
+    Default: ""
+    Description: "Comma separated list of subnet ids for VPC configuration"
   snowflakeRole:
     Type: String
     Description: "Snowflake Role with permissions to create Storage Integrations, API Integrations and Functions"
@@ -800,6 +810,8 @@ Resources:
           S3BucketName: !Ref s3BucketName
           SecretArn: !Ref snowflakeSecretArn
           KmsKeyArn: !Ref kmsKeyArn
+          VpcSecurityGroups: !Ref vpcSecurityGroups
+          VpcSubnets: !Ref vpcSubnets
           SnowflakeRole: !Ref snowflakeRole
           StackName: !Sub "${AWS::StackName}"
           DatabaseName: !Ref snowflakeDatabaseName
