@@ -1,94 +1,45 @@
+# Amazon SageMaker Integration with Snowflake
+
+You can use the CloudFormation template provided in this repository to add machine-learning capabilities to your Snowflake account using Amazon SageMaker.
+
+In order to use this package, you need a Snowflake account and an AWS account.
+After a few manual steps, the CloudFormation template can be deployed to your AWS account in order to create all the AWS resources (API Gateway, Lambda) and Snowflake resources (external functions) required.
+
+The instructions that follow allow you to set up and deploy the CloudFormation template for development/debugging/testing purposes. For a quick start user guide on how to set up your Snowflake account with Amazon SageMaker, please refer to the Snowflake public documentation.
+
 # Preparation
 
 These are the steps to prepare the CloudFormation template (customer-stack.yml) to be executable.
 
-## Upload Layer and Lambda code to an existing S3 bucket
-
-Snowflake connector python is not part of the default runtime in Lambda. In order to load the Snowflake library into Lambda, we need to use a Lambda Layer.
-
-Lambda Layers take a zip file with the libraries (formatted according to the language used https://docs.aws.amazon.com/lambda/latest/dg/configuration-layers.html) from S3 and loads them into Lambda.
-
-As the bucket for the integration is created as part of the CloudFormation template we will need an S3 bucket created before for this. When this is released, those files will be on a public AWS bucket. At the moment we need to build them and upload them.
-
-### Generate ZIP file containing the Layer code
-
-The script *generate-layer.sh* located in the *customer-stack/* directory will be the responsible of downloading the needed files.
-
-In order to execute it, from a Linux terminal run:
-
-```
-% cd customer-stack/
-% bash generate-layer.sh
-% cd layer/snowflake-connector-python/
-% zip -r snowflake-connector-python-1.0.zip .
-```
-
-These commands will generate a file called *snowflake-connector-python-1.0.zip* containing the libraries for the Lambda.
-
-We need to upload it to the S3 we have already created and we will use as repository for our code.
-
-### Generate ZIP file containing the Lambda code
-
-In order to load the libraries, the Lambda function can't be inline on the CLoudFormation template (it will be visible and editable for the customers once the stack was created).
-
-We need to zip the Python code for the Lambda and upload it to the same S3 bucket we already uploaded the Layer zip.
-
-From a Linux terminal, run:
-
-```
-% cd customer-stack/
-zip -r create-resources-1.0.zip create-resources.py
-```
-
-These commands will generate a file called *create-resources-1.0.zip* containing the Lambda code.
-
-We need to upload it to the S3 we have already created and we will use as repository for our code.
-
-### Check your files are ready
-
-You can check that your files are ready by checking them on the S3 console or you can use the CLI.
-
-In my case, I put both files on the root of my S3 bucket:
-
-```
-% aws s3 ls s3://snowflake-sagemaker-integration/ | grep zip
-2021-06-04 13:33:22       2369 create-resources-1.0.zip
-2021-06-03 15:25:26   37842663 snowflake-connector-python-1.0.zip
-```
-
 ## Snowflake Resources needed
 
-Load abalone.csv (or any dataset you want to use) to Snowflake and put it on a table called ABALONE.
+Load a tabular dataset (i.e. a CSV file) into Snowflake and put it on a Snowflake table. For instance, you can use the Abalone data, originally from the UCI data repository (https://archive.ics.uci.edu/ml/datasets/abalone).
 
 ## Create an AWS secret containing the Credentials to access your Snowflake account
 
-SageMaker doesn't store customer data. The credentials to access Snowflake must be stored on a Secret in AWS Secret Manager.
+The credentials to access Snowflake must be stored on a Secret in AWS Secret Manager. In order to set that up:
 
-Go to the Secrets Manager console.
+1. Go to the Secrets Manager console.
+2. Click on *Store a new Secret*
+3. Select *Other type of secrets*
+4. On the *Secret key/value* tab fill 3 key/value rows:
 
-Click on *Store a new Secret*
-
-Select *Other type of secrets*
-
-On the *Secret key/value* tab fill 3 key/value rows:
-
-* username (this contains your Snowflake username)
-* password (this contains your Snowflake password)
-* accountid (this contains your Snowflake account id)
+   * accountid (this contains your Snowflake account id)
+   * username (this contains your Snowflake username)
+   * password (this contains your Snowflake password)
 
 If you click *Plaintext* you should see something like this:
 
 ```
 {
-  "accountid": "AWSPARTNER",
-  "username": "nicana",
-  "password": "your_password_here"
+  "accountid": "your_account_id",
+  "username": "your_username",
+  "password": "your_password"
 }
 ```
 
-Leave the default encryption key selected and click next.
-
-Give a name to your Secret and click next (for example: mySecret).
+5. Leave the default encryption key selected and click next.
+6. Give a name to your Secret and click next (for example: mySecret).
 
 # Creation of the stack
 
@@ -96,7 +47,7 @@ Give a name to your Secret and click next (for example: mySecret).
 
 These parameters are needed to create the stack.
 
-* s3BucketName: "Name of the S3 bucket to be created to store the training data and artifacts produced by the AutoML jobs"
+* s3BucketName: "Name of the S3 bucket to be created to store the training data and artifacts produced by the SageMaker AutoML jobs"
 * snowflakeSecretArn: "ARN of the AWS Secret containing the Snowflake login information"
 * kmsKeyArn (Optional): "ARN of the AWS Key Management Service key that Amazon SageMaker uses to encrypt job outputs. The KmsKeyId is applied to all outputs."
 * vpcSecurityGroupIds (Optional): "Comma delimited list of security group ids for VPC configuration"
@@ -105,10 +56,10 @@ These parameters are needed to create the stack.
 * snowflakeDatabaseName: "Snowflake Database in which external functions will be created"
 * snowflakeSchemaName: "Snowflake Database Schema in which external functions will be created"
 * apiGatewayName (Optional): "API Gateway name"
-* apiGatewayStageName (Optional): "API deployment stage"
-* codeBucket (Optional): "Name of the S3 bucket containing the code. Default is sagemaker-sample-files (public S3 bucket)"
-* pathToLayerCode (Optional): "Path within codeBucket where the layer code is. Default is a location to public S3 bucket sagemaker-sample-files."
-* pathToLambdaCode (Optional): "Path within codeBucket where the lambda code is. Default is a location to public S3 bucket sagemaker-sample-files."
+* apiGatewayStageName (Optional): "API Gateway stage name"
+* codeBucket (Optional): "Name of the S3 bucket containing the code. Default is `sagemaker-sample-files` (public S3 bucket)"
+* pathToLayerCode (Optional): "Path within codeBucket where the layer code is. Default is a location to public S3 bucket `sagemaker-sample-files`."
+* pathToLambdaCode (Optional): "Path within codeBucket where the lambda code is. Default is a location to public S3 bucket `sagemaker-sample-files`."
 
 ## Create the stack via the CLI
 
@@ -120,7 +71,7 @@ aws cloudformation create-stack \
 --stack-name myteststack \
 --template-body file://path/to/customer-stack.yml \
 --capabilities CAPABILITY_NAMED_IAM \
---parameters ParameterKey=s3BucketName,ParameterValue=snowflake-sagemaker-integration \
+--parameters ParameterKey=s3BucketName,ParameterValue=S3_BUCKET_NAME \
 ParameterKey=snowflakeSecretArn,ParameterValue=CREDENTIALS_SECRET_ARN \
 ParameterKey=kmsKeyArn,ParameterValue=KMS_KEY_ARN \
 ParameterKey=vpcSecurityGroupIds,ParameterValue=SG_GROUP1\\,SG_GROUP2 \
@@ -162,7 +113,7 @@ The CREATE_MODEL calls accept the input on the body:
   "TableName": "String: Table name",
   "TargetColumn": "String: Target attribute name",
   "ObjectiveMetric": "String: Metric Name",
-  "ProblemType": "MulticlassClassification",
+  "ProblemType": "Enum: Auto|BinaryClassification|MulticlassClassification|Regression",
   "MaxTime": Long: Maxtime in seconds for the AutoML Job,
   "ModelDeployConfig": {
     "ModelDeployMode": "Enum: Model deployment mode: Model|EndpointConfig|Endpoint",
@@ -185,9 +136,9 @@ The CREATE_MODEL calls accept the input on the body:
       [...]
     ]
   },
-  "Warehouse": "String: Warehouse name",
-  "Database": "String: Database name",
-  "Schema": "String: Schema name"
+  "Warehouse": "String: Snowflake Warehouse name",
+  "Database": "String: Snowflake Database name",
+  "Schema": "String: Snowflake Schema name"
 }
 ```
 
@@ -200,15 +151,15 @@ This Method returns an empty JSON:
 ### Example
 #### Console
 
-Access the API Gateway Console on the region you created your stack.
+* Access the API Gateway Console on the region you created your stack.
 
-Enter the *SageMakerSnowflakeApiGateway* API
+* Enter the *SageMakerSnowflakeApiGateway* API
 
-Click on the *POST* right behind */createmodel*
+* Click on the *POST* right behind */createmodel*
 
-Click on *TEST*
+* Click on *TEST*
 
-On the Request Body, add a JSON specifying the fields:
+* On the Request Body, add a JSON specifying the fields:
 
 ```
 {
@@ -217,7 +168,6 @@ On the Request Body, add a JSON specifying the fields:
   "TargetColumn": "RINGS",
   "ObjectiveMetric": "Accuracy",
   "ProblemType": "MulticlassClassification",
-  "MaxTime": Long: Maxtime in seconds for the AutoML Job,
   "ModelDeployConfig": {
     "ModelDeployMode": "Endpoint",
     "EndpointConfigDefinitions": [
@@ -259,13 +209,13 @@ If it works, the logs will show an ARN for *testModel*, something like:
 arn:aws:sagemaker:YOUR_REGION:YOUR_ACCOUNT_ID:automl-job/testModel-job
 ```
 
-You can check that the model was deployed into an endpoint via the console.
+After the corresponding AutoMLJob has completed (may take minutes), you can check that the best model found was deployed to a SageMaker Endpoint via the AWS Console:
 
-Open the SageMaker Console on the region where your CloudFormation template was created.
+* Open the SageMaker Console on the region where your CloudFormation template was created.
 
-On the left bar expand *Inference* and click on *Endpoints*.
+* On the left bar expand *Inference* and click on *Endpoints*.
 
-You will see an endpoint with name *testModel* in the list.
+* You will see an endpoint with name *testModel* in the list.
 
 #### CLI
 
@@ -360,17 +310,17 @@ The Output will be a JSON in the format returned by the SageMaker endpoint (http
 ### Example
 #### Console
 
-Access the API Gateway Console on the region you created your stack.
+* Access the API Gateway Console on the region you created your stack.
 
-Enter the *SageMakerSnowflakeApiGateway* API
+* Enter the *SageMakerSnowflakeApiGateway* API
 
-Click on the *POST* right behind */{endpointName}*.
+* Click on the *POST* right behind */{endpointName}*.
 
-Click on *TEST*
+* Click on *TEST*
 
-On the Path parameter for *{endpointName}*, add the name of your endpoint *testEndpoint*.
+* On the Path parameter for *{endpointName}*, add the name of your endpoint *testEndpoint*.
 
-On the Request Body, add the CSV with the data to invoke the endpoint:
+* On the Request Body, add the CSV with the data to invoke the endpoint:
 
 ```
 M,0.455,0.365,0.095,0.514,0.2245,0.101,0.15
@@ -471,15 +421,15 @@ Body:
 ### Example
 #### Console
 
-Access the API Gateway Console on the region you created your stack.
+* Access the API Gateway Console on the region you created your stack.
 
-Enter the *SageMakerSnowflakeApiGateway* API
+* Enter the *SageMakerSnowflakeApiGateway* API
 
-Click on the *POST* right behind */deleteendpoint*
+* Click on the *POST* right behind */deleteendpoint*
 
-Click on *TEST*
+* Click on *TEST*
 
-On the Request Body, add a JSON with the data to :
+* On the Request Body, add a JSON with the data to :
 
 ```
 {
@@ -487,7 +437,7 @@ On the Request Body, add a JSON with the data to :
 }
 ```
 
-You can check the endpoint was deleted the same way it is explained on *HOWTO deploy the model*.
+You can check the endpoint was deleted in the same way explained above to verify the endpoint creation.
 
 #### CLI
 
@@ -508,7 +458,7 @@ aws apigateway test-invoke-method \
 --body '{"EndpointName": "testEndpoint"}'
 ```
 
-You can check the endpoint was deleted the same way it is explained on *HOWTO deploy the model*.
+You can check the endpoint was deleted in the same way explained above to verify the endpoint creation.
 
 ## CREATE_ENDPOINT
 ### Synopsis
@@ -556,7 +506,7 @@ On the Request Body, add a JSON with the data to :
 }
 ```
 
-You can check the endpoint was created the same way it is explained on *HOWTO deploy the model*.
+You can check the endpoint was created in the same way explained above to verify the endpoint creation.
 
 #### CLI
 
@@ -577,8 +527,7 @@ aws apigateway test-invoke-method \
 --body '{"EndpointConfigName": "testModel-m5-2xl-1","EndpointName": "testEndpoint1","DeletionCondition": {"MaxRuntimeInSeconds": 7200}}'
 ```
 
-You can check the endpoint was created the same way it is explained on *HOWTO deploy the model*.
-
+You can check the endpoint was created in the same way explained above to verify the endpoint creation.
 
 ## DESCRIBE_MODEL
 ### Synopsis
@@ -609,15 +558,15 @@ Body:
 ### Example
 #### Console
 
-Access the API Gateway Console on the region you created your stack.
+* Access the API Gateway Console on the region you created your stack.
 
-Enter the *SageMakerSnowflakeApiGateway* API
+* Enter the *SageMakerSnowflakeApiGateway* API
 
-Click on the *POST* right behind */describemodel*
+* Click on the *POST* right behind */describemodel*
 
-Click on *TEST*
+* Click on *TEST*
 
-On the Request Body, add a JSON with the data to :
+* On the Request Body, add a JSON with the data to :
 
 ```
 {
@@ -692,19 +641,19 @@ Body:
 ### Example
 #### Console
 
-Access the API Gateway Console on the region you created your stack.
+* Access the API Gateway Console on the region you created your stack.
 
-Enter the *SageMakerSnowflakeApiGateway* API
+* Enter the *SageMakerSnowflakeApiGateway* API
 
-Click on the *POST* right behind */describeendpoint*
+* Click on the *POST* right behind */describeendpoint*
 
-Click on *TEST*
+* Click on *TEST*
 
-On the Request Body, add a JSON with the data to :
+* On the Request Body, add a JSON with the data to :
 
 ```
 {
-  "EndpointName": "testEndpooint"
+  "EndpointName": "testEndpoint"
 }
 ```
 
@@ -733,7 +682,49 @@ aws apigateway test-invoke-method \
 --rest-api-id CHANGEME_API_ID \
 --resource-id CHANGEME_deleteendpoint_RESOURCE_ID \
 --http-method POST \
---body '{"EndpointName": "testEndpooint"}'
+--body '{"EndpointName": "testEndpoint"}'
 ```
 
 You can check the endpoint was deleted the same way it is explained on *HOWTO deploy the model*.
+
+## Generate and upload Layer and Lambda code to an existing S3 bucket
+
+The Snowflake Python connector is not part of the AWS Lambda runtime. In order to load the Snowflake Python connectior into Lambda, we need to use a Lambda layer.
+
+Lambda layers take a ZIP file with the libraries (formatted according to the language used https://docs.aws.amazon.com/lambda/latest/dg/configuration-layers.html) from S3 and loads them into the Lambda runtime environment.
+
+The Lambda layer ZIP file is hosted in a publicly accessible S3 bucket (`sagemaker-sample-files`) that this CloudFormation template refers to. In case you wish to generate the layer manually (for development/testing), please follow the instructions below.
+
+### Generate ZIP file containing the Layer code
+
+The script *generate-layer.sh* located in the *customer-stack/* directory will be the responsible of downloading the needed files.
+
+In order to execute it, from a Linux terminal run:
+
+```
+% cd customer-stack/
+% bash generate-layer.sh
+% cd layer/snowflake-connector-python/
+% zip -r snowflake-connector-python-1.0.zip .
+```
+
+These commands will generate a file called *snowflake-connector-python-1.0.zip* containing the libraries for the Lambda.
+
+You can then upload the generated file in your S3 bucket and use the corresponding S3 URL as a reference for your Lambda layer.
+
+### Generate ZIP file containing the Lambda code
+
+In order to load the libraries, the Lambda function can't be specified inline on the CloudFormation template (it will be visible and editable for the customers once the stack was created).
+
+As such, we need to ZIP the Lambda Python code and upload it in the same S3 bucket where we already uploaded the layer ZIP file in the previous step.
+
+From a Linux terminal, run:
+
+```
+% cd customer-stack/
+zip -r create-resources-1.0.zip create-resources.py
+```
+
+These commands will generate a file called *create-resources-1.0.zip* containing the Lambda code.
+
+You can then upload the generated file in your S3 bucket and use the corresponding S3 URL as a reference for your Lambda function code.
