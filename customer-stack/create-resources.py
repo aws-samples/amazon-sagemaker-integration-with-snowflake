@@ -645,17 +645,24 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
             payload[\"ProblemType\"] = problemType;\
         }\
         if (kmsKeyArn) { \
-            payload[\"OutputDataConfig\"][\"KmsKeyId\"] = kmsKeyArn;\
-            payload[\"InputDataConfig\"][\"AutoMLSnowflakeDatasetDefinition\"][\"KmsKeyId\"] = kmsKeyArn;\
+            payload[\"OutputDataConfig\"][\"KmsKeyId\"] = kmsKeyArn; \
+            payload[\"InputDataConfig\"][\"AutoMLSnowflakeDatasetDefinition\"] = { \
+                \"KmsKeyId\" : kmsKeyArn \
+            }; \
+            payload[\"AutoMLJobConfig\"][\"SecurityConfig\"] = payload[\"AutoMLJobConfig\"][\"SecurityConfig\"] || {}; \
             payload[\"AutoMLJobConfig\"][\"SecurityConfig\"] = { \
-                \"VolumeKmsKeyId\": kmsKeyArn,\
-                \"EnableInterContainerTrafficEncryption\": true\
-            };\
-        }\
-        if (vpcSecurityGroupIds) { \
+                \"VolumeKmsKeyId\": kmsKeyArn, \
+                \"EnableInterContainerTrafficEncryption\": true \
+            }; \
+        } \
+        if (vpcSecurityGroupIds.length > 0) { \
+            payload[\"AutoMLJobConfig\"][\"SecurityConfig\"] = payload[\"AutoMLJobConfig\"][\"SecurityConfig\"] || {}; \
+            payload[\"AutoMLJobConfig\"][\"SecurityConfig\"][\"VpcConfig\"] = payload[\"AutoMLJobConfig\"][\"SecurityConfig\"][\"VpcConfig\"] || {}; \
             payload[\"AutoMLJobConfig\"][\"SecurityConfig\"][\"VpcConfig\"][\"SecurityGroupIds\"] = vpcSecurityGroupIds; \
         } \
-        if (vpcSubnetIds) { \
+        if (vpcSubnetIds.length > 0) { \
+            payload[\"AutoMLJobConfig\"][\"SecurityConfig\"] = payload[\"AutoMLJobConfig\"][\"SecurityConfig\"] || {}; \
+            payload[\"AutoMLJobConfig\"][\"SecurityConfig\"][\"VpcConfig\"] = payload[\"AutoMLJobConfig\"][\"SecurityConfig\"][\"VpcConfig\"] || {}; \
             payload[\"AutoMLJobConfig\"][\"SecurityConfig\"][\"VpcConfig\"][\"Subnets\"] = vpcSubnetIds; \
         } \
         \
