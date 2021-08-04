@@ -99,7 +99,9 @@ These parameters are needed to create the stack.
 * s3BucketName: "Name of the S3 bucket to be created to store the training data and artifacts produced by the AutoML jobs"
 * snowflakeSecretArn: "ARN of the AWS Secret containing the Snowflake login information"
 * kmsKeyArn (Optional): "ARN of the AWS Key Management Service key that Amazon SageMaker uses to encrypt job outputs. The KmsKeyId is applied to all outputs."
-* snowflakeRole (Optional):"Snowflake Role with permissions to create Storage and API Integrations"
+* vpcSecurityGroupIds (Optional): "Comma delimited list of security group ids for VPC configuration"
+* vpcSubnetIds (Optional): "Comma delimited list of subnet ids for VPC configuration"
+* snowflakeRole (Optional): "Snowflake Role with permissions to create Storage and API Integrations"
 * snowflakeDatabaseName: "Snowflake Database in which external functions will be created"
 * snowflakeSchemaName: "Snowflake Database Schema in which external functions will be created"
 * apiGatewayName (Optional): "API Gateway name"
@@ -121,6 +123,8 @@ aws cloudformation create-stack \
 --parameters ParameterKey=s3BucketName,ParameterValue=snowflake-sagemaker-integration \
 ParameterKey=snowflakeSecretArn,ParameterValue=CREDENTIALS_SECRET_ARN \
 ParameterKey=kmsKeyArn,ParameterValue=KMS_KEY_ARN \
+ParameterKey=vpcSecurityGroupIds,ParameterValue=SG_GROUP1\\,SG_GROUP2 \
+ParameterKey=vpcSubnetIds,ParameterValue=SUBNET_1\\,SUBNET_2 \
 ParameterKey=snowflakeRole,ParameterValue=SNOWFLAKE_ROLE \
 ParameterKey=snowflakeDatabaseName,ParameterValue=SNOWFLAKE_DATABASE_NAME \
 ParameterKey=snowflakeSchemaName,ParameterValue=SNOWFLAKE_SCHEMA_NAME \

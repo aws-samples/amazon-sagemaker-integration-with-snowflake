@@ -13,6 +13,16 @@ Parameters:
     AllowedPattern: "^(arn:aws[a-z-]*:kms:[a-z0-9-]*:[0-9]{12}:key\\/.+)?$"
     Default: ""
     Description: "ARN of the AWS Key Management Service key that Amazon SageMaker uses to encrypt job outputs. The KmsKeyId is applied to all outputs."
+  vpcSecurityGroupIds:
+    Type: "String"
+    AllowedPattern: "^([-0-9a-zA-Z]+(,\\s*[-0-9a-zA-Z]+)*)?$"
+    Default: ""
+    Description: "Comma delimited list of security group ids for VPC configuration"
+  vpcSubnetIds:
+    Type: "String"
+    AllowedPattern: "^([-0-9a-zA-Z]+(,\\s*[-0-9a-zA-Z]+)*)?$"
+    Default: ""
+    Description: "Comma delimited list of subnet ids for VPC configuration"
   snowflakeRole:
     Type: String
     Description: "Snowflake Role with permissions to create Storage Integrations, API Integrations and Functions"
@@ -381,7 +391,7 @@ Resources:
         RequestParameters:
           integration.request.header.X-Amz-Target: "'SageMaker.CreateAutoMLJob'"
           integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
-        PassthroughBehavior: WHEN_NO_MATCH        
+        PassthroughBehavior: WHEN_NO_MATCH
         IntegrationResponses:
           - StatusCode: 200
             SelectionPattern: '2..'            
@@ -487,7 +497,7 @@ Resources:
         RequestParameters:
           integration.request.header.X-Amz-Target: "'SageMaker.CreateEndpoint'"
           integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
-        PassthroughBehavior: WHEN_NO_MATCH        
+        PassthroughBehavior: WHEN_NO_MATCH
         IntegrationResponses:
           - StatusCode: 200
             SelectionPattern: '2..'
@@ -800,6 +810,8 @@ Resources:
           S3BucketName: !Ref s3BucketName
           SecretArn: !Ref snowflakeSecretArn
           KmsKeyArn: !Ref kmsKeyArn
+          VpcSecurityGroupIds: !Ref vpcSecurityGroupIds
+          VpcSubnetIds: !Ref vpcSubnetIds
           SnowflakeRole: !Ref snowflakeRole
           StackName: !Sub "${AWS::StackName}"
           DatabaseName: !Ref snowflakeDatabaseName
