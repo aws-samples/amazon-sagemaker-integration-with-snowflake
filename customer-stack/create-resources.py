@@ -371,7 +371,7 @@ def create_describeendpointconfig_ef(snowflake_cursor, api_integration_name, api
 
     snowflake_cursor.execute(describeendpointconfig_deserializer_str)
 
-    create_describeendpointconfig_ef_str = ("create or replace external function AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG(endpointConfigName varchar, modelName varchar, instanceType varchar, instanceCount int) \
+    create_describeendpointconfig_ef_str = ("create or replace external function AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG(endpointConfigName varchar) \
     returns variant \
     api_integration = \"%s\" \
     serializer = AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG_SERIALIZER \
@@ -404,7 +404,7 @@ def create_deleteendpointconfig_ef(snowflake_cursor, api_integration_name, api_g
 
     snowflake_cursor.execute(deleteendpointconfig_deserializer_str)
 
-    create_deleteendpointconfig_ef_str = ("create or replace external function AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG(endpointConfigName varchar, modelName varchar, instanceType varchar, instanceCount int) \
+    create_deleteendpointconfig_ef_str = ("create or replace external function AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG(endpointConfigName varchar) \
     returns variant \
     api_integration = \"%s\" \
     serializer = AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG_SERIALIZER \
