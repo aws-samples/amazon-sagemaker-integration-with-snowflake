@@ -238,15 +238,17 @@ def create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_
         response[\"JobStatusDetails\"] = responseBody.AutoMLJobSecondaryStatus; \
         if (responseBody.AutoMLJobStatus === \"Completed\") \
         { \
-        response[\"ObjectiveMetric\"] = responseBody.BestCandidate.FinalAutoMLJobObjectiveMetric.MetricName; \
-        response[\"BestObjectiveMetric\"] = responseBody.BestCandidate.FinalAutoMLJobObjectiveMetric.Value; \
+            if (responseBody.BestCandidate) { \
+                response[\"ObjectiveMetric\"] = responseBody.BestCandidate.FinalAutoMLJobObjectiveMetric.MetricName; \
+                response[\"BestObjectiveMetric\"] = responseBody.BestCandidate.FinalAutoMLJobObjectiveMetric.Value; \
+            } \
         } else if (responseBody.AutoMLJobStatus === \"Failed\") \
         {\
             response[\"FailureReason\"] = responseBody.FailureReason;\
         }\
         \
         response[\"PartialFailureReasons\"] = responseBody.PartialFailureReasons;\
-        response[\"AutoMLJobSecondaryStatus\"] = responseBody.AutoMLJobSecondaryStatus;\
+        response[\"AutoMLJobSecondaryStatus\"] = responseBody.AutoMLJobSecondaryStatus; /* TODO: duplicate of JobStatusDetails? */ \
         \
         return {\"body\":{   \"data\" : [[0,response]]  }};\
         $$;")
