@@ -238,15 +238,17 @@ def create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_
         response[\"JobStatusDetails\"] = responseBody.AutoMLJobSecondaryStatus; \
         if (responseBody.AutoMLJobStatus === \"Completed\") \
         { \
-        response[\"ObjectiveMetric\"] = responseBody.BestCandidate.FinalAutoMLJobObjectiveMetric.MetricName; \
-        response[\"BestObjectiveMetric\"] = responseBody.BestCandidate.FinalAutoMLJobObjectiveMetric.Value; \
+            if (responseBody.BestCandidate) { \
+                response[\"ObjectiveMetric\"] = responseBody.BestCandidate.FinalAutoMLJobObjectiveMetric.MetricName; \
+                response[\"BestObjectiveMetric\"] = responseBody.BestCandidate.FinalAutoMLJobObjectiveMetric.Value; \
+            } \
         } else if (responseBody.AutoMLJobStatus === \"Failed\") \
         {\
             response[\"FailureReason\"] = responseBody.FailureReason;\
         }\
         \
         response[\"PartialFailureReasons\"] = responseBody.PartialFailureReasons;\
-        response[\"AutoMLJobSecondaryStatus\"] = responseBody.AutoMLJobSecondaryStatus;\
+        response[\"AutoMLJobSecondaryStatus\"] = responseBody.AutoMLJobSecondaryStatus; /* TODO: duplicate of JobStatusDetails? */ \
         \
         return {\"body\":{   \"data\" : [[0,response]]  }};\
         $$;")
@@ -369,7 +371,7 @@ def create_describeendpointconfig_ef(snowflake_cursor, api_integration_name, api
 
     snowflake_cursor.execute(describeendpointconfig_deserializer_str)
 
-    create_describeendpointconfig_ef_str = ("create or replace external function AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG(endpointConfigName varchar, modelName varchar, instanceType varchar, instanceCount int) \
+    create_describeendpointconfig_ef_str = ("create or replace external function AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG(endpointConfigName varchar) \
     returns variant \
     api_integration = \"%s\" \
     serializer = AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG_SERIALIZER \
@@ -402,7 +404,7 @@ def create_deleteendpointconfig_ef(snowflake_cursor, api_integration_name, api_g
 
     snowflake_cursor.execute(deleteendpointconfig_deserializer_str)
 
-    create_deleteendpointconfig_ef_str = ("create or replace external function AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG(endpointConfigName varchar, modelName varchar, instanceType varchar, instanceCount int) \
+    create_deleteendpointconfig_ef_str = ("create or replace external function AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG(endpointConfigName varchar) \
     returns variant \
     api_integration = \"%s\" \
     serializer = AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG_SERIALIZER \
@@ -430,7 +432,7 @@ def create_describeendpoint_ef(snowflake_cursor, api_integration_name, api_gatew
     describeendpoint_deserializer_str = ("create or replace function AWS_AUTOPILOT_DESCRIBE_ENDPOINT_DESERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
         $$ \
-            return {\"body\": {   \"data\" : [[0, EVENT.body]]  }}\
+            return {\"body\": {   \"data\" : [[0, EVENT.body]]  }}  \
         $$;")
 
     snowflake_cursor.execute(describeendpoint_deserializer_str)
@@ -486,7 +488,7 @@ def create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway
     predictoutcome_serializer_str = ("create or replace function AWS_AUTOPILOT_PREDICT_OUTCOME_SERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
         $$ \
-        let modelName = \"/\"  + EVENT.body.data[0][1]; \
+        let modelName = \"/\"  + EVENT.body.data[0][1]; /* TODO: we should rename this variable endpointName */ \
         var payload = []; \
         for(i = 0; i < EVENT.body.data.length; i++) { \
             var row = EVENT.body.data[i]; \
@@ -645,17 +647,24 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
             payload[\"ProblemType\"] = problemType;\
         }\
         if (kmsKeyArn) { \
-            payload[\"OutputDataConfig\"][\"KmsKeyId\"] = kmsKeyArn;\
-            payload[\"InputDataConfig\"][\"AutoMLSnowflakeDatasetDefinition\"][\"KmsKeyId\"] = kmsKeyArn;\
+            payload[\"OutputDataConfig\"][\"KmsKeyId\"] = kmsKeyArn; \
+            payload[\"InputDataConfig\"][\"AutoMLSnowflakeDatasetDefinition\"] = { \
+                \"KmsKeyId\" : kmsKeyArn \
+            }; \
+            payload[\"AutoMLJobConfig\"][\"SecurityConfig\"] = payload[\"AutoMLJobConfig\"][\"SecurityConfig\"] || {}; \
             payload[\"AutoMLJobConfig\"][\"SecurityConfig\"] = { \
-                \"VolumeKmsKeyId\": kmsKeyArn,\
-                \"EnableInterContainerTrafficEncryption\": true\
-            };\
-        }\
-        if (vpcSecurityGroupIds) { \
+                \"VolumeKmsKeyId\": kmsKeyArn, \
+                \"EnableInterContainerTrafficEncryption\": true \
+            }; \
+        } \
+        if (vpcSecurityGroupIds.length > 0) { \
+            payload[\"AutoMLJobConfig\"][\"SecurityConfig\"] = payload[\"AutoMLJobConfig\"][\"SecurityConfig\"] || {}; \
+            payload[\"AutoMLJobConfig\"][\"SecurityConfig\"][\"VpcConfig\"] = payload[\"AutoMLJobConfig\"][\"SecurityConfig\"][\"VpcConfig\"] || {}; \
             payload[\"AutoMLJobConfig\"][\"SecurityConfig\"][\"VpcConfig\"][\"SecurityGroupIds\"] = vpcSecurityGroupIds; \
         } \
-        if (vpcSubnetIds) { \
+        if (vpcSubnetIds.length > 0) { \
+            payload[\"AutoMLJobConfig\"][\"SecurityConfig\"] = payload[\"AutoMLJobConfig\"][\"SecurityConfig\"] || {}; \
+            payload[\"AutoMLJobConfig\"][\"SecurityConfig\"][\"VpcConfig\"] = payload[\"AutoMLJobConfig\"][\"SecurityConfig\"][\"VpcConfig\"] || {}; \
             payload[\"AutoMLJobConfig\"][\"SecurityConfig\"][\"VpcConfig\"][\"Subnets\"] = vpcSubnetIds; \
         } \
         \
