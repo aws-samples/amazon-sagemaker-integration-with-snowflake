@@ -432,7 +432,7 @@ def create_describeendpoint_ef(snowflake_cursor, api_integration_name, api_gatew
     describeendpoint_deserializer_str = ("create or replace function AWS_AUTOPILOT_DESCRIBE_ENDPOINT_DESERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
         $$ \
-            return {\"body\": {   \"data\" : [[0, EVENT.body]]  }}\
+            return {\"body\": {   \"data\" : [[0, EVENT.body]]  }}  \
         $$;")
 
     snowflake_cursor.execute(describeendpoint_deserializer_str)
@@ -488,7 +488,7 @@ def create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway
     predictoutcome_serializer_str = ("create or replace function AWS_AUTOPILOT_PREDICT_OUTCOME_SERIALIZER(EVENT OBJECT) \
         returns OBJECT LANGUAGE JAVASCRIPT AS \
         $$ \
-        let modelName = \"/\"  + EVENT.body.data[0][1]; \
+        let modelName = \"/\"  + EVENT.body.data[0][1]; /* TODO: we should rename this variable endpointName */ \
         var payload = []; \
         for(i = 0; i < EVENT.body.data.length; i++) { \
             var row = EVENT.body.data[i]; \
