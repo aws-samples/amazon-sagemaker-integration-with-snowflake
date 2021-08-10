@@ -62,6 +62,10 @@ Parameters:
     Description: "Path within codeBucket where the lambda code is (example: libraries/create-resources-0.1.zip)"
     Default: "libraries/create-resources-0.1.zip"
     MinLength: 1
+  snowflakeResourceSuffix:
+    Type: String
+    Description: "Optional suffix for resources created in Snowflake. This suffix will be added to all the functions created in the database schema."
+    Default: ""
 Mappings:
   Package:
     Attributes:
@@ -829,6 +833,7 @@ Resources:
           StackName: !Sub "${AWS::StackName}"
           DatabaseName: !Ref snowflakeDatabaseName
           SchemaName: !Ref snowflakeSchemaName
+          SnowflakeResourceSuffix: !Ref snowflakeResourceSuffix
   SnowflakeResources:
     Type: Custom::SnowflakeResources
     DependsOn:
