@@ -471,7 +471,7 @@ def create_deleteendpoint_ef(snowflake_cursor, api_integration_name, api_gateway
 
     snowflake_cursor.execute(deleteendpoint_deserializer_str)
 
-    create_deleteendpoint_ef_str = ("""create or replace external function AWS_AUTOPILOT_DELETE_ENDPOINT(endpointName varchar) 
+    create_deleteendpoint_ef_str = ("""create or replace external function %s(endpointName varchar) 
     returns variant 
     api_integration = \"%s\" 
     serializer = AWS_AUTOPILOT_DELETE_ENDPOINT_SERIALIZER 
@@ -579,7 +579,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         let s3OutputUri = \"s3://%s/output/\"; 
         let kmsKeyArn = \"%s\"; 
         let vpcSecurityGroupIds = [%s]; 
-        let vpcSubnetIds = [%s]; \
+        let vpcSubnetIds = [%s];
         if (tableNameComponents.length === 3) 
         {
             databaseName = tableNameComponents[0]; 
