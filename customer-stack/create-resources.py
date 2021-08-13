@@ -258,10 +258,10 @@ def create_describemodel_ef(snowflake_cursor, api_integration_name, api_gateway_
     create_describemodel_ef_str = ("""create or replace external function %s(modelname varchar) 
         returns variant 
         api_integration = \"%s\" 
-        serializer = AWS_AUTOPILOT_DESCRIBE_MODEL_SERIALIZER 
-        deserializer=AWS_AUTOPILOT_DESCRIBE_MODEL_DESERIALIZER 
+        serializer =%s 
+        deserializer=%s 
         max_batch_rows=1 
-        as '%s/describemodel';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_DESCRIBE_MODEL"), api_integration_name, api_gateway_url)
+        as '%s/describemodel';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_DESCRIBE_MODEL"), api_integration_name, get_full_resource_name_with_suffix("AWS_AUTOPILOT_DESCRIBE_MODEL_SERIALIZER"), get_full_resource_name_with_suffix("AWS_AUTOPILOT_DESCRIBE_MODEL_DESERIALIZER"), api_gateway_url)
 
     snowflake_cursor.execute(create_describemodel_ef_str)
 
@@ -274,11 +274,12 @@ def create_createendpoint_ef(snowflake_cursor, api_integration_name, api_gateway
         $$ 
         let endpointName = EVENT.body.data[0][1];
         let endpointConfigName = EVENT.body.data[0][2];
+        let endpointTTL = EVENT.body.data[0][3];
         let payload = {
                 \"EndpointName\" : endpointName,
                 \"EndpointConfigName\" : endpointConfigName,
                 \"DeletionCondition\": {
-                \"MaxRuntimeInSeconds\": 7200
+                \"MaxRuntimeInSeconds\": endpointTTL
                 } 
               }; 
         return {\"body\": payload}; 
@@ -294,13 +295,13 @@ def create_createendpoint_ef(snowflake_cursor, api_integration_name, api_gateway
 
     snowflake_cursor.execute(createendpoint_deserializer_str)
 
-    create_createendpoint_ef_str = ("""create or replace external function %s(endpointName varchar, endpointConfigName varchar) 
+    create_createendpoint_ef_str = ("""create or replace external function %s(endpointName varchar, endpointConfigName varchar, endpointTTL integer) 
     returns variant 
     api_integration = \"%s\" 
-    serializer = AWS_AUTOPILOT_CREATE_ENDPOINT_SERIALIZER 
-    deserializer=AWS_AUTOPILOT_CREATE_ENDPOINT_DESERIALIZER 
+    serializer = %s 
+    deserializer=%s 
     max_batch_rows=1 
-    as '%s/createendpoint';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_CREATE_ENDPOINT"), api_integration_name, api_gateway_url)
+    as '%s/createendpoint';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_CREATE_ENDPOINT"), api_integration_name, get_full_resource_name_with_suffix("AWS_AUTOPILOT_CREATE_ENDPOINT_SERIALIZER"), get_full_resource_name_with_suffix("AWS_AUTOPILOT_CREATE_ENDPOINT_DESERIALIZER"), api_gateway_url)
 
     snowflake_cursor.execute(create_createendpoint_ef_str)
 
@@ -341,10 +342,10 @@ def create_createendpointconfig_ef(snowflake_cursor, api_integration_name, api_g
     create_createendpointconfig_ef_str = ("""create or replace external function %s(endpointConfigName varchar, modelName varchar, instanceType varchar, instanceCount int)
     returns variant 
     api_integration = \"%s\" 
-    serializer = AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG_SERIALIZER 
-    deserializer=AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG_DESERIALIZER 
+    serializer = %s 
+    deserializer=%s 
     max_batch_rows=1 
-    as '%s/createendpointconfig';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG"), api_integration_name, api_gateway_url)
+    as '%s/createendpointconfig';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG"), api_integration_name, get_full_resource_name_with_suffix("AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG_SERIALIZER"), get_full_resource_name_with_suffix("AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG_DESERIALIZER"), api_gateway_url)
 
     snowflake_cursor.execute(create_createendpointconfig_ef_str)
 
@@ -374,10 +375,10 @@ def create_describeendpointconfig_ef(snowflake_cursor, api_integration_name, api
     create_describeendpointconfig_ef_str = ("""create or replace external function %s(endpointConfigName varchar)
     returns variant 
     api_integration = \"%s\" 
-    serializer = AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG_SERIALIZER 
-    deserializer=AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG_DESERIALIZER 
+    serializer = %s 
+    deserializer=%s 
     max_batch_rows=1 
-    as '%s/describeendpointconfig';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG"), api_integration_name, api_gateway_url)
+    as '%s/describeendpointconfig';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG"), api_integration_name, get_full_resource_name_with_suffix("AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG_SERIALIZER"), get_full_resource_name_with_suffix("AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG_DESERIALIZER"), api_gateway_url)
 
     snowflake_cursor.execute(create_describeendpointconfig_ef_str)
 
@@ -407,10 +408,10 @@ def create_deleteendpointconfig_ef(snowflake_cursor, api_integration_name, api_g
     create_deleteendpointconfig_ef_str = ("""create or replace external function %s(endpointConfigName varchar) 
     returns variant 
     api_integration = \"%s\" 
-    serializer = AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG_SERIALIZER 
-    deserializer=AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG_DESERIALIZER 
+    serializer = %s 
+    deserializer=%s 
     max_batch_rows=1 
-    as '%s/deleteendpointconfig';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG"), api_integration_name, api_gateway_url)
+    as '%s/deleteendpointconfig';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG"), api_integration_name, get_full_resource_name_with_suffix("AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG_SERIALIZER"), get_full_resource_name_with_suffix("AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG_DESERIALIZER"), api_gateway_url)
 
     snowflake_cursor.execute(create_deleteendpointconfig_ef_str)
 
@@ -440,10 +441,10 @@ def create_describeendpoint_ef(snowflake_cursor, api_integration_name, api_gatew
     create_describeendpoint_ef_str = ("""create or replace external function %s(endpointName varchar) 
     returns variant 
     api_integration = \"%s\" 
-    serializer = AWS_AUTOPILOT_DESCRIBE_ENDPOINT_SERIALIZER 
-    deserializer=AWS_AUTOPILOT_DESCRIBE_ENDPOINT_DESERIALIZER 
+    serializer = %s 
+    deserializer=%s 
     max_batch_rows=1 
-    as '%s/describeendpoint';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_DESCRIBE_ENDPOINT"), api_integration_name, api_gateway_url)
+    as '%s/describeendpoint';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_DESCRIBE_ENDPOINT"), api_integration_name, get_full_resource_name_with_suffix("AWS_AUTOPILOT_DESCRIBE_ENDPOINT_SERIALIZER"), get_full_resource_name_with_suffix("AWS_AUTOPILOT_DESCRIBE_ENDPOINT_DESERIALIZER"), api_gateway_url)
 
     snowflake_cursor.execute(create_describeendpoint_ef_str)
 
@@ -474,10 +475,10 @@ def create_deleteendpoint_ef(snowflake_cursor, api_integration_name, api_gateway
     create_deleteendpoint_ef_str = ("""create or replace external function %s(endpointName varchar) 
     returns variant 
     api_integration = \"%s\" 
-    serializer = AWS_AUTOPILOT_DELETE_ENDPOINT_SERIALIZER 
-    deserializer=AWS_AUTOPILOT_DELETE_ENDPOINT_DESERIALIZER 
+    serializer = %s 
+    deserializer=%s 
     max_batch_rows=1 
-    as '%s/deleteendpoint';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_DELETE_ENDPOINT"), api_integration_name, api_gateway_url)
+    as '%s/deleteendpoint';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_DELETE_ENDPOINT"), api_integration_name, get_full_resource_name_with_suffix("AWS_AUTOPILOT_DELETE_ENDPOINT_SERIALIZER"), get_full_resource_name_with_suffix("AWS_AUTOPILOT_DELETE_ENDPOINT_DESERIALIZER"), api_gateway_url)
 
     snowflake_cursor.execute(create_deleteendpoint_ef_str)
 
@@ -517,10 +518,10 @@ def create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway
     create_predictoutcome_ef_str = ("""create or replace external function %s(endpointName varchar, columns array)
     returns variant 
     api_integration = \"%s\" 
-    serializer = AWS_AUTOPILOT_PREDICT_OUTCOME_SERIALIZER 
-    deserializer=AWS_AUTOPILOT_PREDICT_OUTCOME_DESERIALIZER 
+    serializer = %s 
+    deserializer=%s 
     max_batch_rows=1 
-    as '%s/predictoutcome';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_PREDICT_OUTCOME"), api_integration_name, api_gateway_url)
+    as '%s/predictoutcome';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_PREDICT_OUTCOME"), api_integration_name, get_full_resource_name_with_suffix("AWS_AUTOPILOT_PREDICT_OUTCOME_SERIALIZER"), get_full_resource_name_with_suffix("AWS_AUTOPILOT_PREDICT_OUTCOME_DESERIALIZER"), api_gateway_url)
 
     snowflake_cursor.execute(create_predictoutcome_ef_str)
 
@@ -690,22 +691,22 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
     returns variant 
     api_integration = \"%s\" 
     context_headers  = (CURRENT_DATABASE, CURRENT_SCHEMA, CURRENT_WAREHOUSE) 
-    serializer = AWS_AUTOPILOT_CREATE_MODEL_SERIALIZER 
-    deserializer=AWS_AUTOPILOT_CREATE_MODEL_DESERIALIZER 
+    serializer = %s 
+    deserializer=%s 
     max_batch_rows=1 
-    as '%s/createmodel';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_CREATE_MODEL"), api_integration_name, api_gateway_url)
+    as '%s/createmodel';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_CREATE_MODEL"), api_integration_name, get_full_resource_name_with_suffix("AWS_AUTOPILOT_CREATE_MODEL_SERIALIZER"), get_full_resource_name_with_suffix("AWS_AUTOPILOT_CREATE_MODEL_DESERIALIZER"), api_gateway_url)
 
     snowflake_cursor.execute(create_createmodel_ef_str)
 
     create_createmodel_ef_str2 = ("""create or replace external function %s(modelname varchar, targettable varchar, 
-    targetcol varchar, objective_metric varchar, problem_type varchar, max_running_time integer, deploy_model boolean, model_endpoint_ttl integer) 
+    targetcol varchar, objectiveMetric varchar, problemType varchar, maxRunningTime integer, deployModel boolean, modelEndpointTTL integer) 
     returns variant 
     api_integration = \"%s\" 
     context_headers  = (CURRENT_DATABASE, CURRENT_SCHEMA, CURRENT_WAREHOUSE) 
-    serializer = AWS_AUTOPILOT_CREATE_MODEL_SERIALIZER 
-    deserializer=AWS_AUTOPILOT_CREATE_MODEL_DESERIALIZER 
+    serializer = %s 
+    deserializer=%s 
     max_batch_rows=1 
-    as '%s/createmodel';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_CREATE_MODEL"), api_integration_name, api_gateway_url)
+    as '%s/createmodel';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_CREATE_MODEL"), api_integration_name, get_full_resource_name_with_suffix("AWS_AUTOPILOT_CREATE_MODEL_SERIALIZER"), get_full_resource_name_with_suffix("AWS_AUTOPILOT_CREATE_MODEL_DESERIALIZER"), api_gateway_url)
 
     snowflake_cursor.execute(create_createmodel_ef_str2)
 
@@ -791,4 +792,16 @@ def add_quotes_to_comma_delimited_list_items(comma_delimited_list: str):
     return comma_delimited_list_with_quotes
 
 def add_snowflake_resource_suffix(resource_name: str):
-    return resource_name + "_" + os.environ['SnowflakeResourceSuffix']
+    suffix = os.environ['SnowflakeResourceSuffix']
+
+    if suffix and suffix.strip() :
+        return resource_name + "_" + suffix
+    
+    return resource_name
+
+
+def get_full_resource_name_with_suffix(resource_name: str):
+    database_name = os.environ['DatabaseName']
+    schema_name = os.environ['SchemaName']
+    resource_name_with_suffix = add_snowflake_resource_suffix(resource_name)
+    return database_name + "." + schema_name + "." + resource_name_with_suffix
