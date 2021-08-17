@@ -12,7 +12,7 @@ Parameters:
     Type: String
     AllowedPattern: "^(arn:aws[a-z-]*:kms:[a-z0-9-]*:[0-9]{12}:key\\/.+)?$"
     Default: ""
-    Description: "ARN of the AWS Key Management Service key that Amazon SageMaker uses to encrypt job outputs. The KmsKeyId is applied to all outputs."
+    Description: "(Optional) ARN of the AWS Key Management Service key that Amazon SageMaker uses to encrypt job outputs. The KmsKeyId is applied to all outputs."
   vpcSecurityGroupIds:
     Type: "String"
     AllowedPattern: "^([-0-9a-zA-Z]+(,\\s*[-0-9a-zA-Z]+)*)?$"

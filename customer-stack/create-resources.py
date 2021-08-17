@@ -274,7 +274,12 @@ def create_createendpoint_ef(snowflake_cursor, api_integration_name, api_gateway
         $$ 
         let endpointName = EVENT.body.data[0][1];
         let endpointConfigName = EVENT.body.data[0][2];
-        let endpointTTL = EVENT.body.data[0][3];
+        let endpointTTL = 7*24*60*60;
+
+        if (EVENT.body.data[0][3] != undefined) {
+            endpointTTL = EVENT.body.data[0][3]; 
+        }
+
         let payload = {
                 \"EndpointName\" : endpointName,
                 \"EndpointConfigName\" : endpointConfigName,
