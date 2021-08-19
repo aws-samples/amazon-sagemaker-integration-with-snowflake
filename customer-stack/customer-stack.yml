@@ -75,6 +75,24 @@ Conditions:
     - !Equals
       - !Ref kmsKeyArn
       - ""
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label: ""
+        Parameters:
+          - apiGatewayName
+          - apiGatewayStageName
+          - s3BucketName
+          - kmsKeyArn
+          - snowflakeDatabaseName
+          - snowflakeSchemaName
+          - snowflakeResourceSuffix
+          - snowflakeRole
+          - snowflakeSecretArn
+
+
 Resources:
   S3Bucket:
     Type: 'AWS::S3::Bucket'
