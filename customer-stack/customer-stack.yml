@@ -861,3 +861,4 @@ Resources:
       ServiceToken: !Sub
         - "${lambdaArn}"
         - lambdaArn: !GetAtt CreateSnowflakeResourcesLambda.Arn
+      PackageIdentifier: !FindInMap [Package, Attributes, Identifier]

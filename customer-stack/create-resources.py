@@ -523,9 +523,9 @@ def create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway
     create_predictoutcome_ef_str = ("""create or replace external function %s(endpointName varchar, columns array)
     returns variant 
     api_integration = \"%s\" 
-    serializer = %s 
+    serializer = %s
     deserializer=%s 
-    max_batch_rows=1 
+    max_batch_rows=100
     as '%s/predictoutcome';""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_PREDICT_OUTCOME"), api_integration_name, get_full_resource_name_with_suffix("AWS_AUTOPILOT_PREDICT_OUTCOME_SERIALIZER"), get_full_resource_name_with_suffix("AWS_AUTOPILOT_PREDICT_OUTCOME_DESERIALIZER"), api_gateway_url)
 
     snowflake_cursor.execute(create_predictoutcome_ef_str)
