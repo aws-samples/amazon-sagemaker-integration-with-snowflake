@@ -17,12 +17,12 @@ Parameters:
     Type: "String"
     AllowedPattern: "^([-0-9a-zA-Z]+(,\\s*[-0-9a-zA-Z]+)*)?$"
     Default: ""
-    Description: "Comma delimited list of security group ids for VPC configuration"
+    Description: "(Optional) Comma delimited list of security group ids for VPC configuration"
   vpcSubnetIds:
     Type: "String"
     AllowedPattern: "^([-0-9a-zA-Z]+(,\\s*[-0-9a-zA-Z]+)*)?$"
     Default: ""
-    Description: "Comma delimited list of subnet ids for VPC configuration"
+    Description: "(Optional) Comma delimited list of subnet ids for VPC configuration"
   snowflakeRole:
     Type: String
     Description: "Snowflake Role with permissions to create Storage Integrations, API Integrations and Functions"
@@ -40,7 +40,7 @@ Parameters:
     Type: "String"
     AllowedPattern: "^[a-zA-Z0-9]+[-a-zA-Z0-9-]+[-a-zA-Z0-9]+$"
     Default: "snowflake-autopilot-api"
-    Description: API Gateway name
+    Description: "API Gateway name"
   apiGatewayStageName:
     Type: "String"
     AllowedPattern: "^[-a-zA-Z0-9]+$"
@@ -64,7 +64,7 @@ Parameters:
     MinLength: 1
   snowflakeResourceSuffix:
     Type: String
-    Description: "Optional suffix for resources created in Snowflake. This suffix will be added to all the functions created in the database schema."
+    Description: "(Optional) Suffix for resources created in Snowflake. This suffix will be added to all function names created in the database schema."
     Default: ""
 Mappings:
   Package:
@@ -75,7 +75,6 @@ Conditions:
     - !Equals
       - !Ref kmsKeyArn
       - ""
-
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -91,8 +90,6 @@ Metadata:
           - snowflakeResourceSuffix
           - snowflakeRole
           - snowflakeSecretArn
-
-
 Resources:
   S3Bucket:
     Type: 'AWS::S3::Bucket'

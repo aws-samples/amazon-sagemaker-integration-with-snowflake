@@ -60,6 +60,7 @@ These parameters are needed to create the stack.
 * codeBucket (Optional): "Name of the S3 bucket containing the code. Default is `sagemaker-sample-files` (public S3 bucket)"
 * pathToLayerCode (Optional): "Path within codeBucket where the layer code is. Default is a location to public S3 bucket `sagemaker-sample-files`."
 * pathToLambdaCode (Optional): "Path within codeBucket where the lambda code is. Default is a location to public S3 bucket `sagemaker-sample-files`."
+* snowflakeResourceSuffix (Optional): "Suffix for resources created in Snowflake. This suffix will be added to all function names created in the database schema."
 
 ## Create the stack via the CLI
 
@@ -83,7 +84,8 @@ ParameterKey=apiGatewayName,ParameterValue=API_GW_NAME \
 ParameterKey=apiGatewayStageName,ParameterValue=API_GW_STAGE_NAME \
 ParameterKey=codeBucket,ParameterValue=NAME_OF_THE_CODE_BUCKET \
 ParameterKey=pathToLayerCode,ParameterValue=KEY_OF_LAYER_CODE \
-ParameterKey=pathToLambdaCode,ParameterValue=KEY_OF_LAMBDA_CODE
+ParameterKey=pathToLambdaCode,ParameterValue=KEY_OF_LAMBDA_CODE \
+ParameterKey=snowflakeResourceSuffix,ParameterValue=SUFFIX
 ```
 
 **Note:** If the stack was created already, you can update it by changing *create-stack* by *update-stack* on the previous command.
