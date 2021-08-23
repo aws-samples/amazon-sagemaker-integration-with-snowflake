@@ -519,7 +519,7 @@ def create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway
     api_integration = \"%s\" \
     serializer = AWS_AUTOPILOT_PREDICT_OUTCOME_SERIALIZER \
     deserializer=AWS_AUTOPILOT_PREDICT_OUTCOME_DESERIALIZER \
-    max_batch_rows=1 \
+    max_batch_rows=100 \
     as '%s/predictoutcome';") % (api_integration_name, api_gateway_url)
 
     snowflake_cursor.execute(create_predictoutcome_ef_str)
