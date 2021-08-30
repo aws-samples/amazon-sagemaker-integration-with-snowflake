@@ -549,7 +549,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         let modelname = EVENT.body.data[0][1]; 
         let targetTable = EVENT.body.data[0][2]; 
         let targetCol = EVENT.body.data[0][3]; 
-        let maxRunningTime = 7200; 
+        let maxRunningTime = 24*60*60; 
         let deployModel = true;
         let modelEndpointTTL = 7*24*60*60; 
         let problemType; 
