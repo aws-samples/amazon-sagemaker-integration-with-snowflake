@@ -570,15 +570,15 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
             } 
             
             if (EVENT.body.data[0][7] != undefined) { 
-                maxRunningTime = EVENT.body.data[0][6]; 
+                maxRunningTime = EVENT.body.data[0][7]; 
             }
 
             if (EVENT.body.data[0][8] != undefined) { 
-                deployModel = EVENT.body.data[0][7]; 
+                deployModel = EVENT.body.data[0][8]; 
             } 
             
             if (EVENT.body.data[0][9] != undefined) { 
-                modelEndpointTTL = EVENT.body.data[0][8]; 
+                modelEndpointTTL = EVENT.body.data[0][9]; 
             } 
         } 
         
