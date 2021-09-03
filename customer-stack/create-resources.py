@@ -553,7 +553,8 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         let deployModel = true;
         let modelEndpointTTL = 7*24*60*60; 
         let problemType; 
-        let objectiveMetric; 
+        let objectiveMetric;
+        let maxCandidates; 
         
         if (EVENT.body.data[0].length == 9) { 
             if (EVENT.body.data[0][4] != undefined) { 
@@ -565,14 +566,18 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
             } 
             
             if (EVENT.body.data[0][6] != undefined) { 
-                maxRunningTime = EVENT.body.data[0][6]; 
+                maxCandidates = EVENT.body.data[0][6]; 
             } 
             
             if (EVENT.body.data[0][7] != undefined) { 
+                maxRunningTime = EVENT.body.data[0][6]; 
+            }
+
+            if (EVENT.body.data[0][8] != undefined) { 
                 deployModel = EVENT.body.data[0][7]; 
             } 
             
-            if (EVENT.body.data[0][8] != undefined) { 
+            if (EVENT.body.data[0][9] != undefined) { 
                 modelEndpointTTL = EVENT.body.data[0][8]; 
             } 
         } 
@@ -676,6 +681,10 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
                 ]
             };
         }
+
+        if (maxCandidates) {
+            payload[\"CompletionCriteria\"][\"MaxCandidates\"] = maxCandidates;
+        }
         
         return {\"body\": JSON.stringify(payload)}; 
         $$;""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_CREATE_MODEL_SERIALIZER"), s3_bucket_name, kms_key_arn, vpc_security_group_ids_with_quotes, vpc_subnet_ids_with_quotes, snowflake_role_name, secret_arn, storage_integration_name, auto_ml_role_arn)
@@ -704,7 +713,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
     snowflake_cursor.execute(create_createmodel_ef_str)
 
     create_createmodel_ef_str2 = ("""create or replace external function %s(modelname varchar, targettable varchar, 
-    targetcol varchar, objectiveMetric varchar, problemType varchar, maxRunningTime integer, deployModel boolean, modelEndpointTTL integer) 
+    targetcol varchar, objectiveMetric varchar, problemType varchar, maxCandidates integer, maxRunningTime integer, deployModel boolean, modelEndpointTTL integer) 
     returns variant 
     api_integration = \"%s\" 
     context_headers  = (CURRENT_DATABASE, CURRENT_SCHEMA, CURRENT_WAREHOUSE) 
