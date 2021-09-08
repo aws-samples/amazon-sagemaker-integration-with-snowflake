@@ -683,7 +683,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         }
 
         if (maxCandidates) {
-            payload[\"CompletionCriteria\"][\"MaxCandidates\"] = maxCandidates;
+            payload["AutoMLJobConfig"]["CompletionCriteria"]["MaxCandidates"] = maxCandidates;
         }
         
         return {\"body\": JSON.stringify(payload)}; 
