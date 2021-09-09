@@ -595,9 +595,12 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         {
             databaseName = tableNameComponents[0]; 
             schemaName = tableNameComponents[1]; 
+            targetTable = tableNameComponents[2];
+
         } else if (tableNameComponents.length === 2) 
         { 
             schemaName = tableNameComponents[0];
+            targetTable = tableNameComponents[1];
         }
         
         let payload = { 
@@ -683,7 +686,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         }
 
         if (maxCandidates) {
-            payload[\"CompletionCriteria\"][\"MaxCandidates\"] = maxCandidates;
+            payload[\"AutoMLJobConfig\"][\"CompletionCriteria\"][\"MaxCandidates\"] = maxCandidates;
         }
         
         return {\"body\": JSON.stringify(payload)}; 
