@@ -556,7 +556,7 @@ def create_createmodel_ef(snowflake_cursor, api_integration_name, api_gateway_ur
         let objectiveMetric;
         let maxCandidates; 
         
-        if (EVENT.body.data[0].length == 9) { 
+        if (EVENT.body.data[0].length == 10) { 
             if (EVENT.body.data[0][4] != undefined) { 
                 objectiveMetric = EVENT.body.data[0][4]; 
             }
