@@ -50,16 +50,12 @@ These parameters are needed to create the stack.
 * s3BucketName: "Name of the S3 bucket to be created to store the training data and artifacts produced by the SageMaker AutoML jobs"
 * snowflakeSecretArn: "ARN of the AWS Secret containing the Snowflake login information"
 * kmsKeyArn (Optional): "ARN of the AWS Key Management Service key that Amazon SageMaker uses to encrypt job outputs. The KmsKeyId is applied to all outputs."
-* vpcSecurityGroupIds (Optional): "Comma delimited list of security group ids for VPC configuration"
-* vpcSubnetIds (Optional): "Comma delimited list of subnet ids for VPC configuration"
 * snowflakeRole (Optional): "Snowflake Role with permissions to create Storage and API Integrations"
 * snowflakeDatabaseName: "Snowflake Database in which external functions will be created"
 * snowflakeSchemaName: "Snowflake Database Schema in which external functions will be created"
 * apiGatewayName (Optional): "API Gateway name"
 * apiGatewayStageName (Optional): "API Gateway stage name"
-* codeBucket (Optional): "Name of the S3 bucket containing the code. Default is `sagemaker-sample-files` (public S3 bucket)"
-* pathToLayerCode (Optional): "Path within codeBucket where the layer code is. Default is a location to public S3 bucket `sagemaker-sample-files`."
-* pathToLambdaCode (Optional): "Path within codeBucket where the lambda code is. Default is a location to public S3 bucket `sagemaker-sample-files`."
+* snowflakeResourceSuffix (Optional): "Suffix for resources created in Snowflake. This suffix will be added to all function names created in the database schema."
 
 ## Create the stack via the CLI
 
@@ -74,16 +70,12 @@ aws cloudformation create-stack \
 --parameters ParameterKey=s3BucketName,ParameterValue=S3_BUCKET_NAME \
 ParameterKey=snowflakeSecretArn,ParameterValue=CREDENTIALS_SECRET_ARN \
 ParameterKey=kmsKeyArn,ParameterValue=KMS_KEY_ARN \
-ParameterKey=vpcSecurityGroupIds,ParameterValue=SG_GROUP1\\,SG_GROUP2 \
-ParameterKey=vpcSubnetIds,ParameterValue=SUBNET_1\\,SUBNET_2 \
 ParameterKey=snowflakeRole,ParameterValue=SNOWFLAKE_ROLE \
 ParameterKey=snowflakeDatabaseName,ParameterValue=SNOWFLAKE_DATABASE_NAME \
 ParameterKey=snowflakeSchemaName,ParameterValue=SNOWFLAKE_SCHEMA_NAME \
 ParameterKey=apiGatewayName,ParameterValue=API_GW_NAME \
 ParameterKey=apiGatewayStageName,ParameterValue=API_GW_STAGE_NAME \
-ParameterKey=codeBucket,ParameterValue=NAME_OF_THE_CODE_BUCKET \
-ParameterKey=pathToLayerCode,ParameterValue=KEY_OF_LAYER_CODE \
-ParameterKey=pathToLambdaCode,ParameterValue=KEY_OF_LAMBDA_CODE
+ParameterKey=snowflakeResourceSuffix,ParameterValue=SUFFIX
 ```
 
 **Note:** If the stack was created already, you can update it by changing *create-stack* by *update-stack* on the previous command.
@@ -119,10 +111,10 @@ In order to execute it, from a Linux terminal run:
 % cd customer-stack/
 % bash generate-layer.sh
 % cd layer/snowflake-connector-python/
-% zip -r snowflake-connector-python-1.0.zip .
+% zip -r snowflake-connector-python-<version>.zip .
 ```
 
-These commands will generate a file called *snowflake-connector-python-1.0.zip* containing the libraries for the Lambda.
+These commands will generate a file called *snowflake-connector-python-<version>.zip* containing the libraries for the Lambda.
 
 You can then upload the generated file in your S3 bucket and use the corresponding S3 URL as a reference for your Lambda layer.
 
@@ -136,10 +128,10 @@ From a Linux terminal, run:
 
 ```
 % cd customer-stack/
-zip -r create-resources-1.0.zip create-resources.py
+zip -r create-resources-<version>.zip create-resources.py
 ```
 
-These commands will generate a file called *create-resources-1.0.zip* containing the Lambda code.
+These commands will generate a file called *create-resources-<version>.zip* containing the Lambda code.
 
 You can then upload the generated file in your S3 bucket and use the corresponding S3 URL as a reference for your Lambda function code.
 
