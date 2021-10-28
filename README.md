@@ -11,6 +11,8 @@ The instructions that follow allow you to set up and deploy the CloudFormation t
 
 These are the steps to prepare the CloudFormation template (customer-stack.yml) to be executable.
 
+Included in the repository are a minimal set of AWS policies needed to be able to run the CloudFormation template for integration with Snowflake. It is packaged in the policies.zip file that contains the various policies in json file format.
+
 ## Snowflake Resources needed
 
 Load a tabular dataset (i.e. a CSV file) into Snowflake and put it on a Snowflake table. For instance, you can use the Abalone data, originally from the UCI data repository (https://archive.ics.uci.edu/ml/datasets/abalone).
