@@ -54,7 +54,7 @@ def lambda_handler(event, context):
     logger.info("schema_name: " + schema_name)
     logger.info("Snowflake resource suffix: " + os.environ['SnowflakeResourceSuffix'])
 
-    # Delete
+    # Delete .
     if event['RequestType'] == 'Delete':
         logger.info("No action for Delete. Exiting.")
         sendResponse(event, context, SUCCESS, EMPTY_RESPONSE_DATA)
