@@ -494,14 +494,14 @@ def create_predictoutcome_ef(snowflake_cursor, api_integration_name, api_gateway
     predictoutcome_request_translator_str = ("""create or replace function %s(EVENT OBJECT) 
         returns OBJECT LANGUAGE JAVASCRIPT AS 
         $$ 
-        let endpointName = \"/\"  + EVENT.body.data[0][1]; 
+        let endpointName = \"/\"  + encodeURIComponent(EVENT.body.data[0][1]); 
         var payload = []; 
         for(i = 0; i < EVENT.body.data.length; i++) { 
             var row = EVENT.body.data[i]; 
             payload[i] = row[2]; 
         } 
         payloadBody = payload.map(e => e.join(',')).join('\\n'); 
-        return {\"body\": payloadBody, \"urlSuffix\" : encodeURIComponent(endpointName)}; 
+        return {\"body\": payloadBody, \"urlSuffix\" : endpointName}; 
         $$""") % (add_snowflake_resource_suffix("AWS_AUTOPILOT_PREDICT_OUTCOME_REQUEST_TRANSLATOR"))
 
     snowflake_cursor.execute(predictoutcome_request_translator_str)
