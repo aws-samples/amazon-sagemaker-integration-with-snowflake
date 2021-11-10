@@ -1,5 +1,33 @@
 # Snowflake + Amazon SageMaker Autopilot Integration Overview
 
+**Table of contents**
+
+[Solution Architecture](#solution-architecture)
+
+- [Solution Overview](#solution-overview)
+- [Setup](#setup)
+
+[Getting Started](#getting-started)
+
+- [Planning the deployment](#planning-the-deployment)
+- [Deploying the CloudFormation template](#deploying-the-cloudformation-template)
+
+[Working with SageMaker APIs from Snowflake](#working-with-sagemaker-apis-from-snowflake)
+
+- [Create Model](#create-model)
+- [Describe Model](#describe-model)
+- [Predict Outcome](#predict-outcome)
+- [Create Endpoint Config](#create-endpoint-config)
+- [Describe Endpoint Config](#describe-endpoint-config)
+- [Delete Endpoint Config](#delete-endpoint-config)
+- [Create Endpoint](#create-endpoint)
+- [Describe Endpoint](#describe-endpoint)
+- [Delete Endpoint](#delete-endpoint)
+
+[Costs](#costs)
+
+[Cleanup](#cleanup)
+
 Organizations are increasingly using Snowflake to unify, integrate,
 analyze, and share previously fragmented data, and want to use state of
 the art machine learning (ML) to glean business insights. However,
