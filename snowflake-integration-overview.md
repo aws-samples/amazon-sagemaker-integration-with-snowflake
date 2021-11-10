@@ -1,32 +1,26 @@
 # Snowflake + Amazon SageMaker Autopilot Integration Overview
 
-**Table of contents**
+### Table of Contents
 
-[Solution Architecture](#solution-architecture)
-
-- [Solution Overview](#solution-overview)
-- [Setup](#setup)
-
-[Getting Started](#getting-started)
-
-- [Planning the deployment](#planning-the-deployment)
-- [Deploying the CloudFormation template](#deploying-the-cloudformation-template)
-
-[Working with SageMaker APIs from Snowflake](#working-with-sagemaker-apis-from-snowflake)
-
-- [Create Model](#create-model)
-- [Describe Model](#describe-model)
-- [Predict Outcome](#predict-outcome)
-- [Create Endpoint Config](#create-endpoint-config)
-- [Describe Endpoint Config](#describe-endpoint-config)
-- [Delete Endpoint Config](#delete-endpoint-config)
-- [Create Endpoint](#create-endpoint)
-- [Describe Endpoint](#describe-endpoint)
-- [Delete Endpoint](#delete-endpoint)
-
-[Costs](#costs)
-
-[Cleanup](#cleanup)
+- [Solution Architecture](#solution-architecture)
+  - [Solution Overview](#solution-overview)
+  - [Setup](#setup)
+- [Getting Started](#getting-started)
+  - [Planning the Deployment](#planning-the-deployment)
+  - [Deploying the CloudFormation Template](#deploying-the-cloudformation-template)
+- [Working with SageMaker APIs from Snowflake](#working-with-sagemaker-apis-from-snowflake)
+  - [Create Model](#create-model)
+  - [Describe Model](#describe-model)
+  - [Predict Outcome](#predict-outcome)
+  - [Create Endpoint Config](#create-endpoint-config)
+  - [Describe Endpoint Config](#describe-endpoint-config)
+  - [Delete Endpoint Config](#delete-endpoint-config)
+  - [Create Endpoint](#create-endpoint)
+  - [Describe Endpoint](#describe-endpoint)
+  - [Delete Endpoint](#delete-endpoint)
+- [SageMaker Clarify and SageMaker Studio](#sagemaker-clarify-and-sagemaker-studio)
+- [Costs](#costs)
+- [Cleanup](#cleanup)
 
 Organizations are increasingly using Snowflake to unify, integrate,
 analyze, and share previously fragmented data, and want to use state of
@@ -156,7 +150,7 @@ following
 
 ## Getting Started
 
-### Planning the deployment
+### Planning the Deployment
 
 Before you deploy the CloudFormation template, review the following
 information and ensure that your AWS and Snowflake accounts are properly
@@ -174,7 +168,7 @@ at [https://aws.amazon.com](https://aws.amazon.com). Your AWS
 account is automatically signed up for all AWS services. You are charged
 only for the services you use.
 
-#### AWS services quotas
+#### AWS Services Quotas
 
 The resources created by the CloudFormation template provided should
 not exceed any service quota for your AWS account.\
@@ -252,14 +246,14 @@ credentials:
 -   You can leave the remaining options unchanged and click **Store** on
      the final screen.
 
-### Deploying the CloudFormation template
+### Deploying the CloudFormation Template
 
 Sign in to your AWS account, and from the upper-right corner of the
 navigation bar choose the Region you want the resources created by the
 CloudFormation Template to be set up in. It is recommended to deploy the
 AWS resources to the same region the Snowflake deployment runs on.
 
-#### Upload the template
+#### Upload the Template
 
 1.  Go to the AWS Management Console.
 
