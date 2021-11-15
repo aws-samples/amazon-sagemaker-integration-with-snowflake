@@ -1,27 +1,5 @@
 # Snowflake + Amazon SageMaker Autopilot Integration Overview
 
-### Table of Contents
-
-- [Solution Architecture](#solution-architecture)
-  - [Solution Overview](#solution-overview)
-  - [Setup](#setup)
-- [Getting Started](#getting-started)
-  - [Planning the Deployment](#planning-the-deployment)
-  - [Deploying the CloudFormation Template](#deploying-the-cloudformation-template)
-- [Working with SageMaker APIs from Snowflake](#working-with-sagemaker-apis-from-snowflake)
-  - [Create Model](#create-model)
-  - [Describe Model](#describe-model)
-  - [Predict Outcome](#predict-outcome)
-  - [Create Endpoint Config](#create-endpoint-config)
-  - [Describe Endpoint Config](#describe-endpoint-config)
-  - [Delete Endpoint Config](#delete-endpoint-config)
-  - [Create Endpoint](#create-endpoint)
-  - [Describe Endpoint](#describe-endpoint)
-  - [Delete Endpoint](#delete-endpoint)
-- [SageMaker Clarify and SageMaker Studio](#sagemaker-clarify-and-sagemaker-studio)
-- [Costs](#costs)
-- [Cleanup](#cleanup)
-
 Organizations are increasingly using Snowflake to unify, integrate,
 analyze, and share previously fragmented data, and want to use state of
 the art machine learning (ML) to glean business insights. However,
@@ -357,10 +335,10 @@ ARN to the AWS Secret Manager.
 
 2.  The template should have set up:
 
-    a.  Storage Integration with the name :
+a.  Storage Integration with the name :
          AWS_AUTOPILOT_STORAGE_INTEGRATION_YOURSTACKNAME
 
-    b.  API Integration with the name:
+b.  API Integration with the name:
          AWS_AUTOPILOT_API_INTEGRATION_YOURSTACKNAME
 
  You can use the SHOW INTEGRATIONS LIKE \'%AWS_AUTOPILOT%\' SQL command
@@ -374,7 +352,7 @@ ARN to the AWS Secret Manager.
  formation template deployment.
 
 c.  The following external functions and translators (JavaScript
-     functions) are displayed:
+    functions) are displayed:
 
 - AWS_AUTOPILOT_CREATE_MODEL
 - AWS_AUTOPILOT_CREATE_MODEL_REQUEST_TRANSLATOR
@@ -450,7 +428,7 @@ c.  The following external functions and translators (JavaScript
  arn:aws:sagemaker:us-west-2:631484165566:automl-job/abalonemodel-job.\" 
 
 
--   The above command kicks off an AutoML job.
+-   The command above kicks off an AutoML job.
 -   The [Problem
      type](https://docs.aws.amazon.com/sagemaker/latest/dg/autopilot-problem-types.html)
      and [Objective
