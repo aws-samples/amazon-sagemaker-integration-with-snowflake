@@ -5,7 +5,7 @@ You can use the CloudFormation template provided in this repository to add machi
 In order to use this package, you need a Snowflake account and an AWS account.
 After a few manual steps, the CloudFormation template can be deployed to your AWS account in order to create all the AWS resources (API Gateway, Lambda) and Snowflake resources (external functions) required.
 
-The instructions that follow allow you to set up and deploy the CloudFormation template for development/debugging/testing purposes. For a quick start user guide on how to set up your Snowflake account with Amazon SageMaker, please refer to the Snowflake public documentation.
+The instructions that follow allow you to set up and deploy the CloudFormation template for development/debugging/testing purposes. For a quick start user guide on how to set up your Snowflake account with Amazon SageMaker, please refer to the [Snowflake Integration Overview](snowflake-integration-overview.md) article.
 
 # Preparation
 
@@ -139,4 +139,4 @@ You can then upload the generated file in your S3 bucket and use the correspondi
 
 # APIs
 
-For detailed documentation on the APIs provided by the stack, please refer to the Snowflake public documentation.
+For detailed documentation about the APIs provided by the stack, please refer to the [Snowflake Integration Overview](snowflake-integration-overview.md) article.
