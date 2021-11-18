@@ -42,7 +42,7 @@ from SageMaker machine learning models using simple SQL commands.
 |:--:|
 | *Fig 1. Snowflake + Amazon SageMaker Autopilot Solution Architecture* |
 
-1.  When a supported AWS_AUTOPILOT SQL command is executed, the UI
+1.  When a supported `AWS_AUTOPILOT` SQL command is executed, the UI
      client program passes Snowflake a SQL statement that calls an
      external function.
 
@@ -335,14 +335,11 @@ ARN to the AWS Secret Manager.
 
 2.  The template should have set up:
 
-a.  Storage Integration with the name :
-         AWS_AUTOPILOT_STORAGE_INTEGRATION_YOURSTACKNAME
+    a.  Storage Integration with the name: `AWS_AUTOPILOT_STORAGE_INTEGRATION_YOURSTACKNAME`
 
-b.  API Integration with the name:
-         AWS_AUTOPILOT_API_INTEGRATION_YOURSTACKNAME
+    b.  API Integration with the name: `AWS_AUTOPILOT_API_INTEGRATION_YOURSTACKNAME`
 
- You can use the SHOW INTEGRATIONS LIKE \'%AWS_AUTOPILOT%\' SQL command
- to see the integrations created and use the [DESCRIBE
+ You can use the SQL command `SHOW INTEGRATIONS LIKE '%AWS_AUTOPILOT%'` to see the integrations created and use the [DESCRIBE
  INTEGRATION](https://docs.snowflake.com/en/sql-reference/sql/desc-integration.html)
  command to get details on properties of a particular integration.
 
@@ -354,35 +351,35 @@ b.  API Integration with the name:
 c.  The following external functions and translators (JavaScript
     functions) are displayed:
 
-- AWS_AUTOPILOT_CREATE_MODEL
-- AWS_AUTOPILOT_CREATE_MODEL_REQUEST_TRANSLATOR
-- AWS_AUTOPILOT_CREATE_MODEL_RESPONSE_TRANSLATOR
-- AWS_AUTOPILOT_DESCRIBE_MODEL
-- AWS_AUTOPILOT_DESCRIBE_MODEL_REQUEST_TRANSLATOR
-- AWS_AUTOPILOT_DESCRIBE_MODEL_RESPONSE_TRANSLATOR
-- AWS_AUTOPILOT_PREDICT_OUTCOME
-- AWS_AUTOPILOT_PREDICT_OUTCOME_REQUEST_TRANSLATOR
-- AWS_AUTOPILOT_PREDICT_OUTCOME_RESPONSE_TRANSLATOR
-- AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG
-- AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG_REQUEST_TRANSLATOR
-- AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG_RESPONSE_TRANSLATOR
-- AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG
-- AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG_REQUEST_TRANSLATOR
-- AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG_RESPONSE_TRANSLATOR
-- AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG
-- AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG_REQUEST_TRANSLATOR
-- AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG_RESPONSE_TRANSLATOR
-- AWS_AUTOPILOT_CREATE_ENDPOINT
-- AWS_AUTOPILOT_CREATE_ENDPOINT_REQUEST_TRANSLATOR
-- AWS_AUTOPILOT_CREATE_ENDPOINT_RESPONSE_TRANSLATOR
-- AWS_AUTOPILOT_DESCRIBE_ENDPOINT
-- AWS_AUTOPILOT_DESCRIBE_ENDPOINT_REQUEST_TRANSLATOR
-- AWS_AUTOPILOT_DESCRIBE_ENDPOINT_RESPONSE_TRANSLATOR
-- AWS_AUTOPILOT_DELETE_ENDPOINT
-- AWS_AUTOPILOT_DELETE_ENDPOINT_REQUEST_TRANSLATOR
-- AWS_AUTOPILOT_DELETE_ENDPOINT_RESPONSE_TRANSLATOR
+- `AWS_AUTOPILOT_CREATE_MODEL`
+- `AWS_AUTOPILOT_CREATE_MODEL_REQUEST_TRANSLATOR`
+- `AWS_AUTOPILOT_CREATE_MODEL_RESPONSE_TRANSLATOR`
+- `AWS_AUTOPILOT_DESCRIBE_MODEL`
+- `AWS_AUTOPILOT_DESCRIBE_MODEL_REQUEST_TRANSLATOR`
+- `AWS_AUTOPILOT_DESCRIBE_MODEL_RESPONSE_TRANSLATOR`
+- `AWS_AUTOPILOT_PREDICT_OUTCOME`
+- `AWS_AUTOPILOT_PREDICT_OUTCOME_REQUEST_TRANSLATOR`
+- `AWS_AUTOPILOT_PREDICT_OUTCOME_RESPONSE_TRANSLATOR`
+- `AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG`
+- `AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG_REQUEST_TRANSLATOR`
+- `AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG_RESPONSE_TRANSLATOR`
+- `AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG`
+- `AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG_REQUEST_TRANSLATOR`
+- `AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG_RESPONSE_TRANSLATOR`
+- `AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG`
+- `AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG_REQUEST_TRANSLATOR`
+- `AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG_RESPONSE_TRANSLATOR`
+- `AWS_AUTOPILOT_CREATE_ENDPOINT`
+- `AWS_AUTOPILOT_CREATE_ENDPOINT_REQUEST_TRANSLATOR`
+- `AWS_AUTOPILOT_CREATE_ENDPOINT_RESPONSE_TRANSLATOR`
+- `AWS_AUTOPILOT_DESCRIBE_ENDPOINT`
+- `AWS_AUTOPILOT_DESCRIBE_ENDPOINT_REQUEST_TRANSLATOR`
+- `AWS_AUTOPILOT_DESCRIBE_ENDPOINT_RESPONSE_TRANSLATOR`
+- `AWS_AUTOPILOT_DELETE_ENDPOINT`
+- `AWS_AUTOPILOT_DELETE_ENDPOINT_REQUEST_TRANSLATOR`
+- `AWS_AUTOPILOT_DELETE_ENDPOINT_RESPONSE_TRANSLATOR`
 
- You can use SHOW FUNCTIONS LIKE \'%AWS_AUTOPILOT%\' SQL command to see
+ You can use the SQL command `SHOW FUNCTIONS LIKE '%AWS_AUTOPILOT%'` to see
  all the functions created and use the [DESCRIBE
  FUNCTION](https://docs.snowflake.com/en/sql-reference/sql/desc-function.html)
  command to get details on the specified function, including the
@@ -396,36 +393,37 @@ c.  The following external functions and translators (JavaScript
 
 ### Create Model
 
- Use the below AWS_AUTOPILOT_CREATE_MODEL external functions to
+ Use the `AWS_AUTOPILOT_CREATE_MODEL` external functions below to
  kick-off model creation on your data in a Snowflake table.
 
  #### Option 1
 
- **Syntax:**                                                           
-                                                                       
- AWS_AUTOPILOT_CREATE_MODEL(MODELNAME VARCHAR, TRAINING_TABLE_NAME     
- VARCHAR, TARGET_COL VARCHAR)                                          
-                                                                       
- **Arguments (all are required parameters):**                         
- MODELNAME - Name that will be used to refer to the best model found   
- by Autopilot. Allowed Pattern:                                        
- \^\[a-zA-Z0-9\](-\*\[a-zA-Z0-9\]){0,62}                               
-                                                                       
- TRAINING_TABLE_NAME - Name of the table from which to create the      
- model. All rows will be considered to train the model.                
-                                                                       
- TARGET_COL - The name of the target column that we want the model to  
- predict.                                                              
-                                                                       
+ **Syntax:**
+ 
+ ```
+ AWS_AUTOPILOT_CREATE_MODEL(MODELNAME VARCHAR, TRAINING_TABLE_NAME VARCHAR, TARGET_COL VARCHAR)
+ ```
+ 
+ **Arguments (all are required parameters):**
+
+ `MODELNAME` - Name that will be used to refer to the best model found by Autopilot. Allowed Pattern: `^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}`
+
+ `TRAINING_TABLE_NAME` - Name of the table from which to create the model. All rows will be considered to train the model.
+ 
+ `TARGET_COL` - The name of the target column that we want the model to predict.
+ 
  **Usage:**
 
- select aws_autopilot_create_model (\'abalonemodel\',                  
- \'abalone_training_dataset\', \'rings\')                              
-                                                                       
- **Expected output on success:**                                      
+ ```
+ select aws_autopilot_create_model ('abalonemodel', 'abalone_training_dataset', 'rings')
+ ```
  
- "Model creation in progress. Model ARN =                             
- arn:aws:sagemaker:us-west-2:631484165566:automl-job/abalonemodel-job.\" 
+ **Expected output on success:**
+
+ ```
+ "Model creation in progress. Model ARN =
+ arn:aws:sagemaker:us-west-2:631484165566:automl-job/abalonemodel-job."
+ ```
 
 
 -   The command above kicks off an AutoML job.
@@ -439,34 +437,34 @@ c.  The following external functions and translators (JavaScript
      anywhere from a few minutes for small data sets to 2-3 hours for
      large datasets (eg. 5 GB). The default max run time of the AutoML
      job is 86400 seconds. If you want more control on the model
-     creation time, you can use the advanced AWS_AUTOPILOT_CREATE_MODEL
-     option and set the MAX_RUNNING_TIME field. **Note:** The parameter
+     creation time, you can use the advanced `AWS_AUTOPILOT_CREATE_MODEL`
+     option and set the `MAX_RUNNING_TIME` field. **Note:** The parameter
      is intended to set a timeout on the length of the training job,
      and if the job has not finished within the specified limit it is
      forcefully stopped and a model will NOT be created. If you would
      like to optimize for speed and have a model successfully created
-     in a shorter duration consider using the MAX_CANDIDATES parameter.
+     in a shorter duration consider using the `MAX_CANDIDATES` parameter.
 
 -   Use the [AWS_AUTOPILOT_DESCRIBEMODEL](#describe-model)
      function to check the status of the job.
 
--   Once the best model is found Autopilot transparently deploys the
+-   When the best model is found, Autopilot transparently deploys the
      model to a SageMaker Endpoint of the same name as the model.
 
     -   The aws_autopilot_create_model call creates a default endpoint
-         configuration with the name \'yourmodelname-m5-4xl-2\', with
-         the following parameters :\"InitialInstanceCount\": 2,
-         \"InstanceType\": \"ml.m5.4xlarge\". Advanced users can go
+         configuration with the name `yourmodelname-m5-4xl-2`, with
+         the following parameters: `"InitialInstanceCount": 2,
+         "InstanceType": "ml.m5.4xlarge"`. Advanced users can go
          lower or higher depending on their dataset sizes and
          performance needs. See
          [AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG](#create-endpoint-config)
          for more details on specifying a custom endpoint
          configuration. (In the above example, the name of the endpoint
-         configuration created would be \'abalonemodel-m5-4xl-2\'. )
+         configuration created would be `abalonemodel-m5-4xl-2`.)
 
     -   Using the above endpoint config, the model will be deployed to
          an endpoint with the same name as the model (In the above
-         example the endpoint name would be \'abalonemodel\'. The time
+         example the endpoint name would be `abalonemodel`. The time
          to live of the endpoint will be 604800 seconds (7 days), after
          which it is automatically deleted.
 
@@ -487,161 +485,122 @@ Advanced users who would like to specify different default values for
 the various optional parameters can use this variation of the
 AWS_AUTOPILOT_CREATE_MODEL call.
 
- **Syntax:**                                                           
-                                                                       
- AWS_AUTOPILOT_CREATE_MODEL(MODELNAME VARCHAR, TRAINING_TABLE_NAME     
- VARCHAR, TARGET_COL VARCHAR, OBJECTIVE_METRIC VARCHAR, PROBLEM_TYPE   
- VARCHAR,MAX_CANDIDATES INTEGER, MAX_RUNNING_TIME INTEGER,             
- DEPLOY_MODEL BOOLEAN, MODEL_ENDPOINT_TTL INTEGER)                     
-                                                                       
+ **Syntax:**
+
+ ```
+ AWS_AUTOPILOT_CREATE_MODEL(MODELNAME VARCHAR, TRAINING_TABLE_NAME
+ VARCHAR, TARGET_COL VARCHAR, OBJECTIVE_METRIC VARCHAR, PROBLEM_TYPE
+ VARCHAR,MAX_CANDIDATES INTEGER, MAX_RUNNING_TIME INTEGER,
+ DEPLOY_MODEL BOOLEAN, MODEL_ENDPOINT_TTL INTEGER)
+ ```
+
  **Arguments:**
 
- MODELNAME (required) - Name that will be used to refer to the best    
- model found by Autopilot. Allowed Pattern:                            
- \^\[a-zA-Z0-9\](-\*\[a-zA-Z0-9\]){0,62}                               
-                                                                       
- TRAINING_TABLE_NAME (required) - Name of the table from which to      
- create the model. All rows will be used to train the model.           
-                                                                       
- TARGET_COL (required) - The name of the target column that we want    
- the model to predict.                                                 
-                                                                       
- OBJECTIVE_METRIC (optional) - \"Accuracy\", \"MSE\", \"AUC\", \"F1\", 
- and \"F1macro\". If NULL, Autopilot will auto infer this information. 
-                                                                       
- PROBLEM_TYPE (optional) - Type of problem: \"Regression\",            
- \"BinaryClassification\", \"MulticlassClassification\" or \"Auto\".   
- If NULL the default value will be set to \"Auto\".                    
-                                                                       
- MAX_CANDIDATES (optional) - Maximum number of times a training job is 
- allowed to run. Valid values are integers 1 and higher. Can be        
- leveraged to optimize for speed and have the create model call        
- complete quicker by limiting the number of candidates explored. If    
- NULL, Autopilot will auto infer this information. **Note:** For       
- optimizing for objective_metric we suggest leaving this field unset,  
- such that the AutoML job can explore all possible candidates and pick 
- the best one.                                                         
-                                                                       
- MAX_RUNNING_TIME (optional) - Maximum runtime, in seconds, an AutoML  
- job has to complete.If NULL the default value will be set to 86000    
- seconds. **Note:** The parameter is intended to set a timeout on the  
- length of the training job, and if the job has not finished within    
- the specified limit it is forcefully stopped and a model will NOT be  
- created. If you would like to optimize for speed and have a model     
- successfully created in a shorter duration consider using the         
- MAX_CANDIDATES parameter.                                             
-                                                                       
- DEPLOY_MODEL (optional) - TRUE or FALSE. If NULL the default value    
- will be TRUE and the best model will be transparently deployed to a   
- SageMaker Endpoint.                                                  
- The default endpoint configuration used is as follows                 
- :\"InitialInstanceCount\": 2, \"InstanceType\": \"ml.m5.4xlarge\".    
- Advanced users can go lower or higher depending on their dataset      
- sizes and performance needs. See                                      
- [AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG](#create-endpoint-config) 
- for more details on specifying a custom endpoint configuration.       
-                                                                       
- MODEL_ENDPOINT_TTL (optional) - Time to live off the model endpoint   
- in seconds. If NULL the default value will be 7 days.                 
-                                                                       
+ `MODELNAME` (required) - Name that will be used to refer to the best model found by Autopilot. Allowed Pattern: `^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}`
+
+ `TRAINING_TABLE_NAME` (required) - Name of the table from which to create the model. All rows will be used to train the model.
+
+ `TARGET_COL` (required) - The name of the target column that we want the model to predict.
+
+ `OBJECTIVE_METRIC` (optional) - \"Accuracy\", \"MSE\", \"AUC\", \"F1\", and \"F1macro\". If NULL, Autopilot will auto infer this information.
+
+ `PROBLEM_TYPE` (optional) - Type of problem: \"Regression\", \"BinaryClassification\", \"MulticlassClassification\" or \"Auto\". If NULL the default value will be set to \"Auto\".
+
+ `MAX_CANDIDATES` (optional) - Maximum number of times a training job is allowed to run. Valid values are integers 1 and higher. Can be leveraged to optimize for speed and have the create model call complete quicker by limiting the number of candidates explored. If NULL, Autopilot will auto infer this information. **Note:** For optimizing for `OBJECTIVE_METRIC` we suggest leaving this field unset, such that the AutoML job can explore all possible candidates and pick the best one.
+
+ `MAX_RUNNING_TIME` (optional) - Maximum runtime, in seconds, an AutoML job has to complete.If NULL the default value will be set to 86000 seconds. **Note:** The parameter is intended to set a timeout on the length of the training job, and if the job has not finished within the specified limit it is forcefully stopped and a model will NOT be created. If you would like to optimize for speed and have a model successfully created in a shorter duration consider using the `MAX_CANDIDATES` parameter.
+
+ `DEPLOY_MODEL` (optional) - TRUE or FALSE. If NULL the default value will be TRUE and the best model will be transparently deployed to a SageMaker Endpoint. The default endpoint configuration used is as follows: `"InitialInstanceCount": 2, "InstanceType": "ml.m5.4xlarge"`. Advanced users can go lower or higher depending on their dataset sizes and performance needs. See [AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG](#create-endpoint-config) for more details on specifying a custom endpoint configuration.
+
+ `MODEL_ENDPOINT_TTL` (optional) - Time to live off the model endpoint in seconds. If NULL the default value will be 7 days.
+
  **Note:** See [https://aws.amazon.com/sagemaker/pricing/](https://aws.amazon.com/sagemaker/pricing/) 
- for details on instance pricing and to estimate costs.                
-                                                                       
+ for details on instance pricing and to estimate costs.
+
  **Usage:**
-                                                           
- select aws_autopilot_create_model (\'abalonemodel\',                  
- \'abalone_training_dataset\', \'rings\', \'Accuracy\',                
- \'MulticlassClassification\', 20000, \'True\', 86400 )                
-                                                                       
- **Note:** External functions do not support optional parameters. For  
- the optional arguments which are wished to be skipped should be       
- specified as a NULL.                                                  
-                                                                       
+
+ ```
+ select aws_autopilot_create_model ('abalonemodel', 'abalone_training_dataset', 'rings', 'Accuracy', 'MulticlassClassification', 20000, 'True', 86400 )
+ ```
+
+ **Note:** External functions do not support optional parameters. For the optional arguments which are wished to be skipped should be specified as a NULL.
+
  **Expected output on success:**
 
- \"Model creation in progress. Model ARN =                             
- arn:aws:sagemaker:us-west-2:631484165566:automl-job/abalonemodel-job.\" 
+ ```
+ "Model creation in progress. Model ARN =
+ arn:aws:sagemaker:us-west-2:631484165566:automl-job/abalonemodel-job."
+ ```
 
 ### Describe Model
 
- Use the AWS_AUTOPILOT_DESCRIBE_MODEL external function in a SQL query
- to check the status and track progress of your Autopilot training job
- and the model.
+ Use the `AWS_AUTOPILOT_DESCRIBE_MODEL` external function in a SQL query to check the status and track progress of your Autopilot training job and the model.
 
- **Syntax:**                                                           
-                                                                       
- AWS_AUTOPILOT_DESCRIBE_MODEL(MODELNAME VARCHAR)                       
-                                                                       
+ **Syntax:**
+ 
+ ```
+ AWS_AUTOPILOT_DESCRIBE_MODEL(MODELNAME VARCHAR)
+ ```
+
  **Arguments:**
 
- MODELNAME (required) - Name of the model.                             
-                                                                       
+ `MODELNAME` (required) - Name of the model.
+
  **Usage:**
 
- select aws_autopilot_describe_model (\'abalonemodel\')                
-                                                                       
- **The response includes the following information:**                  
-                                                                       
- **Job status**: "Completed", "InProgress", "Failed", "Stopped",       
- "Stopping"                                                            
-                                                                       
- **Job status detail**: Starting, AnalyzingData, FeatureEngineering,   
- ModelTuning,MaxCandidatesReached, Failed, Stopped,                    
- MaxAutoMLJobRuntimeReached, Stopping, DeployingModel,                 
- CandidateDefinitionsGenerated                                         
-                                                                       
- **Problem type:** "Regression", "BinaryClassification" or             
- MulticlassClassification".                                            
-                                                                       
- **Objective metric:** "Accuracy", "MSE", "AUC", "F1", and "F1macro".  
-                                                                       
- **Best Objective Metric Value:** Value of the objective metric for    
- the best model found so far.                                          
-                                                                       
- **Failure reason:** Returns the reason for failure, if the status was 
- "Failed"                                                              
+ ```
+ select aws_autopilot_describe_model ('abalonemodel')
+ ```
+
+ **The response includes the following information:**
+
+ **Job status**: "Completed", "InProgress", "Failed", "Stopped", "Stopping"
+
+ **Job status detail**: Starting, AnalyzingData, FeatureEngineering, ModelTuning, MaxCandidatesReached, Failed, Stopped, MaxAutoMLJobRuntimeReached, Stopping, DeployingModel, CandidateDefinitionsGenerated
+
+ **Problem type:** "Regression", "BinaryClassification" or MulticlassClassification".
+
+ **Objective metric:** "Accuracy", "MSE", "AUC", "F1", and "F1macro".
+ 
+ **Best Objective Metric Value:** Value of the objective metric for the best model found so far.
+
+ **Failure reason:** Returns the reason for failure, if the status was "Failed".
 
 ### Predict Outcome
 
- Use the AWS_AUTOPILOT_PREDICT_OUTCOME external function in a SQL query
- to make predictions using the ML model produced by Autopilot.
+ Use the `AWS_AUTOPILOT_PREDICT_OUTCOME` external function in a SQL query to make predictions using the ML model produced by Autopilot.
 
- **Syntax:**                                                           
-                                                                       
- AWS_AUTOPILOT_PREDICT_OUTCOME(MODEL_ENDPOINT_NAME VARCHAR,COLUMNS     
- ARRAY)                                                                
-                                                                       
+ **Syntax:**
+ 
+ ```
+ AWS_AUTOPILOT_PREDICT_OUTCOME(MODEL_ENDPOINT_NAME VARCHAR,COLUMNS ARRAY)
+ ```
+
  **Arguments:**
 
- MODEL_ENDPOINT_NAME (required) - Name of the endpoint the model is    
- deployed to. Note: Unless the model was manually deployed to a custom 
- endpoint this will be the same as the model name.                     
-                                                                       
- COLUMNS (required) - Array of values or feature columns to pass as    
- inputs for model prediction. The ordering should match that of the    
- training dataset, minus the target column.                            
-                                                                       
+ `MODEL_ENDPOINT_NAME` (required) - Name of the endpoint the model is deployed to. Note: Unless the model was manually deployed to a custom endpoint this will be the same as the model name.
+ 
+ `COLUMNS` (required) - Array of values or feature columns to pass as inputs for model prediction. The ordering should match that of the training dataset, minus the target column.
+
  **Usage:**
 
- select aws_autopilot_predict_outcome (\'abalonemodel\',               
- array_construct(\'M\',0.455, 0.365, 0.095, 0.514, 0.2245, 0.101,      
- 0.15));                                                               
-                                                                       
- select aws_autopilot_predict_outcome (\'abalonemodel\',               
- array_construct(sex, length, diameter, height, whole_weight,          
- shucked_weight, viscera_weight, shell_weight)                         
-                                                                       
- ) as prediction                                                       
-                                                                       
- from abalone_test_dataset;                                            
-                                                                       
- **Response**:                                                         
-                                                                       
- Returns the predicted target value for each row of attributes.        
+ ```
+ select aws_autopilot_predict_outcome ('abalonemodel', array_construct('M',0.455, 0.365, 0.095, 0.514, 0.2245, 0.101, 0.15));
+
+ select aws_autopilot_predict_outcome ('abalonemodel', array_construct(sex, length, diameter, height, whole_weight, shucked_weight, viscera_weight, shell_weight)
+
+ ) as prediction
+
+ from abalone_test_dataset;
+ ```
+
+ **Response**:
+
+ Returns the predicted target value for each row of attributes.
 
 ### Create Endpoint Config
 
- Use the AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG external function in a
+ Use the `AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG` external function in a
  SQL query to create an endpoint configuration that Amazon SageMaker
  hosting services use to deploy models.
 
@@ -650,159 +609,165 @@ AWS_AUTOPILOT_CREATE_MODEL call.
  needs compared to the default endpoint configuration used by the
  create model call.
 
- **Syntax:**                                                           
-                                                                       
- AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG(ENDPOINTCONFIG_NAME              
- VARCHAR,MODELNAME VARCHAR,INSTANCE_TYPE VARCHAR,INSTANCE_COUNT        
- NUMBER)                                                               
-                                                                       
+ **Syntax:**
+ 
+ ```
+ AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG(ENDPOINTCONFIG_NAME
+ VARCHAR,MODELNAME VARCHAR,INSTANCE_TYPE VARCHAR,INSTANCE_COUNT
+ NUMBER)
+ ```
+
  **Arguments (all are required parameters):**
 
- ENDPOINT_CONFIG_NAME- The name of the endpoint configuration. You     
- specify this name in a CreateEndpoint request. Allowed Pattern:       
- \^\[a-zA-Z0-9\](-\*\[a-zA-Z0-9\]){0,62}                               
-                                                                       
- MODELNAME - The name of the model that you want to host. This is the  
- name that you specified when creating the model.                      
-                                                                       
- INSTANCE_TYPE - The ML compute instance type. See [SageMaker instance types](https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProductionVariant.html#sagemaker-Type-ProductionVariant-InstanceType) 
- for more details.                                                     
-                                                                       
- INSTANCE_COUNT - Number of instances to launch.                       
-                                                                       
+ `ENDPOINT_CONFIG_NAME`- The name of the endpoint configuration. You specify this name in a CreateEndpoint request. Allowed Pattern: `^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}`
+
+ `MODELNAME` - The name of the model that you want to host. This is the name that you specified when creating the model.
+
+ `INSTANCE_TYPE` - The ML compute instance type. See [SageMaker instance types](https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProductionVariant.html#sagemaker-Type-ProductionVariant-InstanceType)
+ for more details.
+
+ `INSTANCE_COUNT` - Number of instances to launch.
+
  **Usage:**
 
- select aws_autopilot_create_endpoint_config (                         
- \'abalone-endpoint-config\',\'abalonemodel\', \'ml.c5d.4xlarge\', 3)  
+```
+ select aws_autopilot_create_endpoint_config (
+ 'abalone-endpoint-config','abalonemodel', 'ml.c5d.4xlarge', 3)
+```
 
 ### Describe Endpoint Config
 
- Use the AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG external function in a
- SQL query to get the description of an endpoint configuration that was
- created using the Create Endpoint Config call.
+ Use the `AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG` external function in a SQL query to get the description of an endpoint configuration that was created using the Create Endpoint Config call.
 
- **Syntax:**                                                           
-                                                                       
- AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG(ENDPOINTCONFIG_NAME)           
-                                                                       
+ **Syntax:**
+ 
+ ```
+ AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG(ENDPOINTCONFIG_NAME)
+ ```
+
  **Arguments (all are required parameters):**
 
- ENDPOINT_CONFIG_NAME- The name of the endpoint configuration.         
-                                                                       
+ `ENDPOINT_CONFIG_NAME`- The name of the endpoint configuration.
+
  **Usage:**
 
- select aws_autopilot_describe_endpoint_config                         
- (\'abalone-endpoint-config\')                                         
-                                                                       
- **Response**:                                                         
-                                                                       
- ModelName - The name of the model to be hosted.                       
-                                                                       
- InstanceCount - Number of instances to launch.                        
-                                                                       
- InstanceType - The ML compute instance type.                          
+ ```
+ select aws_autopilot_describe_endpoint_config
+ ('abalone-endpoint-config')
+ ```
+
+ **Response**:
+
+ `ModelName` - The name of the model to be hosted.
+
+ `InstanceCount` - Number of instances to launch.
+
+ `InstanceType` - The ML compute instance type.
 
 ### Delete Endpoint Config
 
- Use the AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG external function in a
+ Use the `AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG` external function in a
  SQL query to delete an endpoint configuration. This command deletes
  only the specified configuration. It does not delete endpoints created
  using the configuration.
 
- **Syntax:**                                                           
-                                                                       
- AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG(ENDPOINTCONFIG_NAME)             
-                                                                       
+ **Syntax:**
+
+ ```
+ AWS_AUTOPILOT_DELETE_ENDPOINT_CONFIG(ENDPOINTCONFIG_NAME)
+ ```
+
  **Arguments (all are required parameters):**
 
- ENDPOINT_CONFIG_NAME- The name of the endpoint configuration.         
-                                                                       
+ `ENDPOINT_CONFIG_NAME`- The name of the endpoint configuration.
+
  **Usage:**
 
- select aws_autopilot_delete_endpoint_config                           
- (\'abalone-endpoint-config\')                                         
+ ```
+ select aws_autopilot_delete_endpoint_config ('abalone-endpoint-config')
+ ```
 
 ### Create Endpoint
 
- Use the AWS_AUTOPILOT_CREATE_ENDPOINT external function in a SQL query
+ Use the `AWS_AUTOPILOT_CREATE_ENDPOINT` external function in a SQL query
  to create an endpoint using the endpoint configuration specified in
  the request. Amazon SageMaker uses the endpoint to provision resources
  and deploy models.
 
 
- **Syntax:**                                                           
-                                                                       
- AWS_AUTOPILOT_CREATE_ENDPOINT(ENDPOINT_NAME VARCHAR,                  
- ENDPOINT_CONFIG_NAME VARCHAR,MODEL_ENDPOINT_TTL INTEGER)              
-                                                                       
- **Arguments (all are required parameters):**                          
-                                                                       
- ENDPOINT_NAME - The name of the endpoint. The exact endpoint name     
- must be provided during inference.Allowed Pattern:                    
- \^\[a-zA-Z0-9\](-\*\[a-zA-Z0-9\]){0,62}                               
-                                                                       
- ENDPOINT_CONFIG_NAME - The name of the endpoint configuration.        
-                                                                       
- **Note:** If you would like to reuse the default endpoint config      
- created during model creation this would be                           
- \'yourmodelname-m5-4xl-2\'.                                           
-                                                                       
- MODEL_ENDPOINT_TTL (optional) - Time to live off the model endpoint   
- in seconds. If NULL the default value will be 7 days.                 
-                                                                       
+ **Syntax:**
+ 
+ ```
+ AWS_AUTOPILOT_CREATE_ENDPOINT(ENDPOINT_NAME VARCHAR, ENDPOINT_CONFIG_NAME VARCHAR,MODEL_ENDPOINT_TTL INTEGER)
+ ```
+
+ **Arguments (all are required parameters):**
+
+ `ENDPOINT_NAME` - The name of the endpoint. The exact endpoint name must be provided during inference.Allowed Pattern: `^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}`
+
+ `ENDPOINT_CONFIG_NAME` - The name of the endpoint configuration.
+
+ **Note:** If you would like to reuse the default endpoint config created during model creation this would be `yourmodelname-m5-4xl-2`.
+
+ `MODEL_ENDPOINT_TTL` (optional) - Time to live off the model endpoint in seconds. If NULL the default value will be 7 days.
+
  **Usage:**
 
- select aws_autopilot_create_endpoint (\'abalone-endpoint\',           
- \'abalone-endpoint-config\', 36000)                                   
+ ```
+ select aws_autopilot_create_endpoint ('abalone-endpoint', 'abalone-endpoint-config', 36000)
+ ```
 
 ### Describe Endpoint
 
- Use the AWS_AUTOPILOT_DESCRIBE_ENDPOINT external function in a SQL
+ Use the `AWS_AUTOPILOT_DESCRIBE_ENDPOINT` external function in a SQL
  query to get the description of an endpoint.
 
- **Syntax:**                                                           
-                                                                       
- AWS_AUTOPILOT_DESCRIBE_ENDPOINT(ENDPOINT_NAME VARCHAR)                
-                                                                       
- **Arguments (all are required parameters):**                          
-                                                                       
- ENDPOINT_NAME - The name of the endpoint.                             
-                                                                       
+ **Syntax:**
+
+ ```
+ AWS_AUTOPILOT_DESCRIBE_ENDPOINT(ENDPOINT_NAME VARCHAR)
+ ```
+
+ **Arguments (all are required parameters):**
+
+ `ENDPOINT_NAME` - The name of the endpoint.
+
  **Usage:**
 
- select aws_autopilot_describe_endpoint(\'abalone-endpoint\')          
-                                                                       
- **Response:**                                                         
-                                                                       
- CreationTime - A timestamp that shows when the endpoint was created.  
-                                                                       
- EndpointConfigName - The name of the endpoint configuration           
- associated with this endpoint.                                        
-                                                                       
- EndpointStatus - The status of the endpoint. (Valid values:           
- OutOfService \| Creating \| Updating \| SystemUpdating \| RollingBack 
- \| InService \| Deleting \| Failed)                                   
-                                                                       
- FailureReason - If the status of the endpoint is Failed, the reason   
- why it failed.                                                        
+ ```
+ select aws_autopilot_describe_endpoint('abalone-endpoint')
+ ```
+
+ **Response:**
+
+ `CreationTime` - A timestamp that shows when the endpoint was created.
+
+ `EndpointConfigName` - The name of the endpoint configuration associated with this endpoint.
+
+ `EndpointStatus` - The status of the endpoint. (Valid values: OutOfService \| Creating \| Updating \| SystemUpdating \| RollingBack \| InService \| Deleting \| Failed)
+
+ `FailureReason` - If the status of the endpoint is Failed, the reason why it failed.
 
 ### Delete Endpoint
 
- Use the AWS_AUTOPILOT_DELETE_ENDPOINT external function in a SQL query
+ Use the `AWS_AUTOPILOT_DELETE_ENDPOINT` external function in a SQL query
  to delete an endpoint. Amazon SageMaker frees up all of the resources
  that were deployed when the endpoint was created.
 
- **Syntax:**                                                           
-                                                                       
- AWS_AUTOPILOT_DELETE_ENDPOINT(ENDPOINT_NAME VARCHAR)                  
-                                                                       
- **Arguments (all are required parameters):**                          
-                                                                       
- ENDPOINT_NAME - The name of the endpoint.                             
-                                                                       
+ **Syntax:**
+ ```
+ AWS_AUTOPILOT_DELETE_ENDPOINT(ENDPOINT_NAME VARCHAR)
+ ```
+
+ **Arguments (all are required parameters):**
+
+ `ENDPOINT_NAME` - The name of the endpoint.
+
  **Usage:**
 
- select aws_autopilot_delete_endpoint(\'abalone-endpoint\')            
+ ```
+ select aws_autopilot_delete_endpoint('abalone-endpoint')
+ ```
 
 ## SageMaker Clarify and SageMaker Studio
 
@@ -909,12 +874,10 @@ To cleanup the resources created by the integration:
          INTEGRATION](https://docs.snowflake.com/en/sql-reference/sql/drop-integration.html#drop-integration)
          SQL command to delete the API and Storage integrations setup.
 
- Note: You can use the SHOW INTEGRATIONS LIKE \'%AWS_AUTOPILOT% SQL
- command to see the integrations.
+ Note: You can use the SQL command `SHOW INTEGRATIONS LIKE '%AWS_AUTOPILOT%'` to see the integrations.
 
 -   Use the [DROP
      FUNCTION](https://docs.snowflake.com/en/sql-reference/sql/drop-function.html)
      SQL command to delete the user defined functions that were set up.
 
- Note: You can use SHOW FUNCTIONS LIKE \'%AWS_AUTOPILOT%\' SQL command
- to see all the functions.
+ Note: You can use the SQL command `SHOW FUNCTIONS LIKE '%AWS_AUTOPILOT%'` to see all the functions.
