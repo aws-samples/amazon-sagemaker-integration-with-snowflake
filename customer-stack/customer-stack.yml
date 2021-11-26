@@ -58,8 +58,8 @@ Mappings:
       Identifier: "'SagemakerProxy/0.2'"
     Locations:
       CodeBucket: "sagemaker-sample-files"
-      PathToLayerCode: "libraries/snowflake-connector-python-0.2.zip"
-      PathToLambdaCode: "libraries/create-resources-0.2.zip"
+      PathToLayerCode: "libraries/snowflake-connector-python-1.0.zip"
+      PathToLambdaCode: "libraries/create-resources-1.0.zip"
 Conditions:
   KMSKeyArnProvided: !Not
     - !Equals
@@ -843,7 +843,7 @@ Resources:
   SnowflakeResources:
     Type: Custom::SnowflakeResources
     DependsOn:
-      - SnowflakeAPIGatewayExecutionRole
+      - SnowflakeAPIGatewayExecutionRole # It should depend on CreateSnowflakeResourcesLambda instead
       - SnowflakeAutoMLExecutionRole
     Properties:
       ServiceToken: !Sub
