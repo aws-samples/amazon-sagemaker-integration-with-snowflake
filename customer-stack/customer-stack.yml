@@ -843,7 +843,7 @@ Resources:
   SnowflakeResources:
     Type: Custom::SnowflakeResources
     DependsOn:
-      - SnowflakeAPIGatewayExecutionRole # It should depend on CreateSnowflakeResourcesLambda instead
+      - SnowflakeAPIGatewayExecutionRole
       - SnowflakeAutoMLExecutionRole
     Properties:
       ServiceToken: !Sub
