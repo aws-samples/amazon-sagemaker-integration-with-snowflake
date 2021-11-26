@@ -55,11 +55,11 @@ Parameters:
 Mappings:
   Package:
     Attributes:
-      Identifier: "'SagemakerProxy/0.2'"
+      Identifier: "'SagemakerProxy/1.0'"
     Locations:
       CodeBucket: "sagemaker-sample-files"
-      PathToLayerCode: "libraries/snowflake-connector-python-0.2.zip"
-      PathToLambdaCode: "libraries/create-resources-0.2.zip"
+      PathToLayerCode: "libraries/snowflake-connector-python-1.0.zip"
+      PathToLambdaCode: "libraries/create-resources-1.0.zip"
 Conditions:
   KMSKeyArnProvided: !Not
     - !Equals
