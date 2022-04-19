@@ -1,0 +1,194 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Private links for snowflake and Autopilot integration
+Parameters:
+  VpcId:
+    Type: String
+  PrivateSubnetIds:
+    Type: String
+  SecurityGroupId:
+    Type: String
+  SnowflakeTestAccountId:
+    Type: String
+  SnowflakePrivateLink:
+    Type: String
+  SecurityGroupIngressRuleToPort:
+    Type: String
+    Default: 65535
+  SecurityGroupIngressRuleFromPort:
+    Type: String
+    Default: 0
+  S3RouteTableIds:
+    Type: CommaDelimitedList
+Conditions:
+  IsSnowflakePrivateLinkSupported: !Not
+    - !Equals
+      - placeholder
+      - !Ref SnowflakePrivateLink
+Resources:
+  SnowflakeVpce:
+    Condition: IsSnowflakePrivateLinkSupported
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      ServiceName: !Ref SnowflakePrivateLink
+      VpcId: !Ref VpcId
+      SecurityGroupIds:
+        - !Ref SecurityGroupId
+      SubnetIds: !Split
+        - ','
+        - !Ref PrivateSubnetIds
+      VpcEndpointType: Interface
+  SnowflakePrivateLinkPrivateHostedZone:
+    Condition: IsSnowflakePrivateLinkSupported
+    Type: 'AWS::Route53::HostedZone'
+    Properties:
+      Name: privatelink.snowflakecomputing.com
+      VPCs:
+        - VpcId: !Ref VpcId
+          VPCRegion: !Ref 'AWS::Region'
+  SnowflakePrivateLinkAccountRecordSets:
+    Condition: IsSnowflakePrivateLinkSupported
+    DependsOn:
+      - SnowflakeVpce
+      - SnowflakePrivateLinkPrivateHostedZone
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      Name: !Join
+        - .
+        - - !Ref SnowflakeTestAccountId
+          - !Ref 'AWS::Region'
+          - privatelink.snowflakecomputing.com
+      Type: CNAME
+      TTL: 300
+      ResourceRecords:
+        - 'Fn::Select':
+            - 1
+            - 'Fn::Split':
+                - ':'
+                - 'Fn::Select':
+                    - 0
+                    - !GetAtt SnowflakeVpce.DnsEntries
+      HostedZoneId: !Ref SnowflakePrivateLinkPrivateHostedZone
+  SnowflakePrivateLinkAppRecordSets:
+    Condition: IsSnowflakePrivateLinkSupported
+    DependsOn:
+      - SnowflakeVpce
+      - SnowflakePrivateLinkPrivateHostedZone
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      Name: !Join
+        - .
+        - - app
+          - !Ref 'AWS::Region'
+          - privatelink.snowflakecomputing.com
+      Type: CNAME
+      TTL: 300
+      ResourceRecords:
+        - 'Fn::Select':
+            - 1
+            - 'Fn::Split':
+                - ':'
+                - 'Fn::Select':
+                    - 0
+                    - !GetAtt SnowflakeVpce.DnsEntries
+      HostedZoneId: !Ref SnowflakePrivateLinkPrivateHostedZone
+  SnowflakePrivateLinkOcspRecordSets:
+    Condition: IsSnowflakePrivateLinkSupported
+    DependsOn:
+      - SnowflakeVpce
+      - SnowflakePrivateLinkPrivateHostedZone
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      Name: !Join
+        - .
+        - - ocsp
+          - !Ref SnowflakeTestAccountId
+          - !Ref 'AWS::Region'
+          - privatelink.snowflakecomputing.com
+      Type: CNAME
+      TTL: 300
+      ResourceRecords:
+        - 'Fn::Select':
+            - 1
+            - 'Fn::Split':
+                - ':'
+                - 'Fn::Select':
+                    - 0
+                    - !GetAtt SnowflakeVpce.DnsEntries
+      HostedZoneId: !Ref SnowflakePrivateLinkPrivateHostedZone
+  SecretManagerVpce:
+    Condition: IsSnowflakePrivateLinkSupported
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      ServiceName: !Join
+        - ''
+        - - com.amazonaws.
+          - !Ref 'AWS::Region'
+          - .secretsmanager
+      VpcId: !Ref VpcId
+      SecurityGroupIds:
+        - !Ref SecurityGroupId
+      SubnetIds: !Split
+        - ','
+        - !Ref PrivateSubnetIds
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+  SagemakerAPIVpce:
+    Condition: IsSnowflakePrivateLinkSupported
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      ServiceName: !Join
+        - ''
+        - - com.amazonaws.
+          - !Ref 'AWS::Region'
+          - .sagemaker.api
+      VpcId: !Ref VpcId
+      SecurityGroupIds:
+        - !Ref SecurityGroupId
+      SubnetIds: !Split
+        - ','
+        - !Ref PrivateSubnetIds
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+  SagemakerRuntimeVpce:
+    Condition: IsSnowflakePrivateLinkSupported
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      ServiceName: !Join
+        - ''
+        - - com.amazonaws.
+          - !Ref 'AWS::Region'
+          - .sagemaker.runtime
+      VpcId: !Ref VpcId
+      SecurityGroupIds:
+        - !Ref SecurityGroupId
+      SubnetIds: !Split
+        - ','
+        - !Ref PrivateSubnetIds
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+  S3Vpce:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:ListBucket
+              - s3:GetBucketLocation
+              - s3:DeleteObject
+              - s3:ListMultipartUploadParts
+              - s3:AbortMultipartUpload
+            Effect: Allow
+            Resource:
+              - '*'
+            Principal: '*'
+      RouteTableIds: !Ref S3RouteTableIds
+      VpcEndpointType: Gateway
+      ServiceName: !Join
+        - ''
+        - - com.amazonaws.
+          - !Ref 'AWS::Region'
+          - .s3
+      VpcId: !Ref 'VpcId'

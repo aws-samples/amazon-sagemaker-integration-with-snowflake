@@ -38,7 +38,7 @@ translators](https://docs.snowflake.com/en/LIMITEDACCESS/external-functions-seri
 features, which allow you to directly create, use, and make predictions
 from SageMaker machine learning models using simple SQL commands.
 
-| ![Snowflake + Amazon SageMaker Autopilot Solution Architecture](images/image1.png) | 
+| ![Snowflake + Amazon SageMaker Autopilot Solution Architecture](images/image1.png) |
 |:--:|
 | *Fig 1. Snowflake + Amazon SageMaker Autopilot Solution Architecture* |
 
@@ -73,6 +73,13 @@ environment:
 | ![AWS Cloudformation Template Setup](images/image2.png) |
 |:--:|
 | *Fig 2. AWS Cloudformation Template Setup* |
+
+
+
+
+| ![AWS Cloudformation Template Setup](images/image3.png) |
+|:--:|
+| *Fig 3. AWS Cloudformation Template Setup with VPC* |
 
 The CloudFormation template transparently and automatically creates the
 following
@@ -399,25 +406,25 @@ c.  The following external functions and translators (JavaScript
  #### Option 1
 
  **Syntax:**
- 
+
  ```
  AWS_AUTOPILOT_CREATE_MODEL(MODELNAME VARCHAR, TRAINING_TABLE_NAME VARCHAR, TARGET_COL VARCHAR)
  ```
- 
+
  **Arguments (all are required parameters):**
 
  `MODELNAME` - Name that will be used to refer to the best model found by Autopilot. Allowed Pattern: `^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}`
 
  `TRAINING_TABLE_NAME` - Name of the table from which to create the model. All rows will be considered to train the model.
- 
+
  `TARGET_COL` - The name of the target column that we want the model to predict.
- 
+
  **Usage:**
 
  ```
  select aws_autopilot_create_model ('abalonemodel', 'abalone_training_dataset', 'rings')
  ```
- 
+
  **Expected output on success:**
 
  ```
@@ -514,7 +521,7 @@ AWS_AUTOPILOT_CREATE_MODEL call.
 
  `MODEL_ENDPOINT_TTL` (optional) - Time to live off the model endpoint in seconds. If NULL the default value will be 7 days.
 
- **Note:** See [https://aws.amazon.com/sagemaker/pricing/](https://aws.amazon.com/sagemaker/pricing/) 
+ **Note:** See [https://aws.amazon.com/sagemaker/pricing/](https://aws.amazon.com/sagemaker/pricing/)
  for details on instance pricing and to estimate costs.
 
  **Usage:**
@@ -537,7 +544,7 @@ AWS_AUTOPILOT_CREATE_MODEL call.
  Use the `AWS_AUTOPILOT_DESCRIBE_MODEL` external function in a SQL query to check the status and track progress of your Autopilot training job and the model.
 
  **Syntax:**
- 
+
  ```
  AWS_AUTOPILOT_DESCRIBE_MODEL(MODELNAME VARCHAR)
  ```
@@ -561,7 +568,7 @@ AWS_AUTOPILOT_CREATE_MODEL call.
  **Problem type:** "Regression", "BinaryClassification" or MulticlassClassification".
 
  **Objective metric:** "Accuracy", "MSE", "AUC", "F1", and "F1macro".
- 
+
  **Best Objective Metric Value:** Value of the objective metric for the best model found so far.
 
  **Failure reason:** Returns the reason for failure, if the status was "Failed".
@@ -571,7 +578,7 @@ AWS_AUTOPILOT_CREATE_MODEL call.
  Use the `AWS_AUTOPILOT_PREDICT_OUTCOME` external function in a SQL query to make predictions using the ML model produced by Autopilot.
 
  **Syntax:**
- 
+
  ```
  AWS_AUTOPILOT_PREDICT_OUTCOME(MODEL_ENDPOINT_NAME VARCHAR,COLUMNS ARRAY)
  ```
@@ -579,7 +586,7 @@ AWS_AUTOPILOT_CREATE_MODEL call.
  **Arguments:**
 
  `MODEL_ENDPOINT_NAME` (required) - Name of the endpoint the model is deployed to. Note: Unless the model was manually deployed to a custom endpoint this will be the same as the model name.
- 
+
  `COLUMNS` (required) - Array of values or feature columns to pass as inputs for model prediction. The ordering should match that of the training dataset, minus the target column.
 
  **Usage:**
@@ -610,7 +617,7 @@ AWS_AUTOPILOT_CREATE_MODEL call.
  create model call.
 
  **Syntax:**
- 
+
  ```
  AWS_AUTOPILOT_CREATE_ENDPOINT_CONFIG(ENDPOINTCONFIG_NAME
  VARCHAR,MODELNAME VARCHAR,INSTANCE_TYPE VARCHAR,INSTANCE_COUNT
@@ -640,7 +647,7 @@ AWS_AUTOPILOT_CREATE_MODEL call.
  Use the `AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG` external function in a SQL query to get the description of an endpoint configuration that was created using the Create Endpoint Config call.
 
  **Syntax:**
- 
+
  ```
  AWS_AUTOPILOT_DESCRIBE_ENDPOINT_CONFIG(ENDPOINTCONFIG_NAME)
  ```
@@ -696,7 +703,7 @@ AWS_AUTOPILOT_CREATE_MODEL call.
 
 
  **Syntax:**
- 
+
  ```
  AWS_AUTOPILOT_CREATE_ENDPOINT(ENDPOINT_NAME VARCHAR, ENDPOINT_CONFIG_NAME VARCHAR,MODEL_ENDPOINT_TTL INTEGER)
  ```
