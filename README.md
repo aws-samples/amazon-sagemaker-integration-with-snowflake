@@ -45,7 +45,7 @@ If you click *Plaintext* you should see something like this:
 
 
 ## Private network setup
-The below setups are needed if the integration infrastructure is to be deployed inside a VPC.
+The setup below is needed if the integration infrastructure is supposed to be deployed inside a VPC.
 
 ### VPC setup
 Sample VPC setup cloudformation template: [vpc-setup.yml](sample-templates/vpc-setup.yml)
@@ -58,14 +58,14 @@ Get Snowflake PrivateLink configurations using the following command
 select SYSTEM$GET_PRIVATELINK_CONFIG();
 ```
 
-Response output will have follwing details:
+Response output will have following details:
 * `privatelink-account-name`
 * `privatelink-internal-stage`
 * `privatelink-account-url`
 * `privatelink-ocsp-url`
 * `privatelink-vpce-id`
 
-The above resources are needed for private link setup. See [Private Link setup](# Private Link setup).
+The resources above are needed for private link setup. See [Private Link setup](#private-link-setup).
 
 
 Get Snowflake VPC ID using the following command

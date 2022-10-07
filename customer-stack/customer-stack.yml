@@ -17,10 +17,12 @@ Parameters:
     Type: "String"
     Default: ""
     Description: "(Optional) Comma delimited list of security group ids for VPC configuration"
+    AllowedPattern: "^(sg\\-[a-zA-Z0-9]+(\\,s*sg\\-[a-zA-Z0-9]+)*)?$"
   vpcSubnetIds:
     Type: "String"
     Default: ""
     Description: "(Optional) Comma delimited list of subnet ids for VPC configuration"
+    AllowedPattern: "^(subnet\\-[a-zA-Z0-9]+(\\,s*subnet\\-[a-zA-Z0-9]+)*)?$"
   snowflakeRole:
     Type: String
     Description: "Snowflake Role with permissions to create Storage Integrations, API Integrations and Functions"
@@ -60,6 +62,7 @@ Parameters:
     Type: "String"
     Default: ""
     Description: "Snowflake VPC that has access to private API Gateway. Used only when creating a private API Gateway"
+    AllowedPattern: "^(vpc\\-[a-zA-Z0-9]+)?$"
 Mappings:
   Package:
     Attributes:
@@ -75,7 +78,7 @@ Conditions:
       - ""
   shouldCreateRegionalGateway:
     !Equals [!Ref apiGatewayType, "REGIONAL"]
-  isVPCConfigNotPresent: !And
+  isVPCConfigPresent: !And
     - !Equals [!Ref "vpcSubnetIds", ""]
     - !Equals [!Ref "vpcSecurityGroupIds", ""]
 Metadata:
@@ -861,10 +864,10 @@ Resources:
           ApiGatewayType: !Ref apiGatewayType
       VpcConfig:
         Fn::If:
-          - isVPCConfigNotPresent
-          - { Ref: "AWS::NoValue" }
+          - isVPCConfigPresent
           - SecurityGroupIds: !Split [",", !Ref vpcSecurityGroupIds]
             SubnetIds: !Split [",", !Ref vpcSubnetIds]
+          - { Ref: "AWS::NoValue" }
   SnowflakeResources:
     Type: Custom::SnowflakeResources
     DependsOn:
