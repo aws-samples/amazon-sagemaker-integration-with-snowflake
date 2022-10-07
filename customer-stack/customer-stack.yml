@@ -78,7 +78,7 @@ Conditions:
       - ""
   shouldCreateRegionalGateway:
     !Equals [!Ref apiGatewayType, "REGIONAL"]
-  isVPCConfigPresent: !And
+  isVPCConfigNotPresent: !Or
     - !Equals [!Ref "vpcSubnetIds", ""]
     - !Equals [!Ref "vpcSecurityGroupIds", ""]
 Metadata:
@@ -864,10 +864,10 @@ Resources:
           ApiGatewayType: !Ref apiGatewayType
       VpcConfig:
         Fn::If:
-          - isVPCConfigPresent
+          - isVPCConfigNotPresent
+          - { Ref: "AWS::NoValue" }
           - SecurityGroupIds: !Split [",", !Ref vpcSecurityGroupIds]
             SubnetIds: !Split [",", !Ref vpcSubnetIds]
-          - { Ref: "AWS::NoValue" }
   SnowflakeResources:
     Type: Custom::SnowflakeResources
     DependsOn:

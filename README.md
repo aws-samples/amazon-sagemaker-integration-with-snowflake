@@ -58,7 +58,7 @@ Get Snowflake PrivateLink configurations using the following command
 select SYSTEM$GET_PRIVATELINK_CONFIG();
 ```
 
-Response output will have following details:
+Response output will have the following details:
 * `privatelink-account-name`
 * `privatelink-internal-stage`
 * `privatelink-account-url`
