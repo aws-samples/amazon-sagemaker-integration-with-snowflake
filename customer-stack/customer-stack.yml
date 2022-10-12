@@ -13,17 +13,16 @@ Parameters:
     AllowedPattern: "^(arn:aws[a-z-]*:kms:[a-z0-9-]*:[0-9]{12}:key\\/.+)?$"
     Default: ""
     Description: "(Optional) ARN of the AWS Key Management Service key that Amazon SageMaker uses to encrypt job outputs. The KmsKeyId is applied to all outputs."
-# Future consideration
-#  vpcSecurityGroupIds:
-#    Type: "String"
-#    AllowedPattern: "^([-0-9a-zA-Z]+(,\\s*[-0-9a-zA-Z]+)*)?$"
-#    Default: ""
-#    Description: "(Optional) Comma delimited list of security group ids for VPC configuration"
-#  vpcSubnetIds:
-#    Type: "String"
-#    AllowedPattern: "^([-0-9a-zA-Z]+(,\\s*[-0-9a-zA-Z]+)*)?$"
-#    Default: ""
-#    Description: "(Optional) Comma delimited list of subnet ids for VPC configuration"
+  vpcSecurityGroupIds:
+    Type: "String"
+    Default: ""
+    Description: "(Optional) Comma delimited list of security group ids for VPC configuration"
+    AllowedPattern: "^(sg\\-[a-zA-Z0-9]+(\\,s*sg\\-[a-zA-Z0-9]+)*)?$"
+  vpcSubnetIds:
+    Type: "String"
+    Default: ""
+    Description: "(Optional) Comma delimited list of subnet ids for VPC configuration"
+    AllowedPattern: "^(subnet\\-[a-zA-Z0-9]+(\\,s*subnet\\-[a-zA-Z0-9]+)*)?$"
   snowflakeRole:
     Type: String
     Description: "Snowflake Role with permissions to create Storage Integrations, API Integrations and Functions"
@@ -48,10 +47,22 @@ Parameters:
     Default: "main"
     Description: "API deployment stage"
     MinLength: 1
+  apiGatewayType:
+    Type: "String"
+    Default: "REGIONAL"
+    AllowedValues:
+      - "REGIONAL"
+      - "PRIVATE"
+    Description: "API Gateway type to create"
   snowflakeResourceSuffix:
     Type: String
     Description: "(Optional) Suffix for resources created in Snowflake. This suffix will be added to all function names created in the database schema."
     Default: ""
+  snowflakeVpcId:
+    Type: "String"
+    Default: ""
+    Description: "Snowflake VPC that has access to private API Gateway. Used only when creating a private API Gateway"
+    AllowedPattern: "^(vpc\\-[a-zA-Z0-9]+)?$"
 Mappings:
   Package:
     Attributes:
@@ -65,6 +76,11 @@ Conditions:
     - !Equals
       - !Ref kmsKeyArn
       - ""
+  shouldCreateRegionalGateway:
+    !Equals [!Ref apiGatewayType, "REGIONAL"]
+  isVPCConfigNotPresent: !Or
+    - !Equals [!Ref "vpcSubnetIds", ""]
+    - !Equals [!Ref "vpcSecurityGroupIds", ""]
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -231,6 +247,7 @@ Resources:
       Path: '/'
       ManagedPolicyArns:
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/CloudWatchLogsFullAccess'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
       Policies:
         - PolicyName: s3-dest-permissions
           PolicyDocument:
@@ -270,6 +287,7 @@ Resources:
       Path: '/'
       ManagedPolicyArns:
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/CloudWatchLogsFullAccess'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
       Policies:
         - PolicyName: secrets-permissions
           PolicyDocument:
@@ -296,11 +314,15 @@ Resources:
       Name: !Ref apiGatewayName
       Description: "Snowflake external functions Gateway"
       Policy: !Sub
-        - '{ "Version": "2012-10-17", "Statement": [ {  "Effect": "Allow", "Principal": { "AWS": "arn:${AWS::Partition}:sts::${AWS::AccountId}:assumed-role/${SnowflakeAPIGatewayExecutionRole}/snowflake" }, "Action": "execute-api:Invoke", "Resource": "${resourceArn}" }  ] }'
+        - '{ "Version": "2012-10-17", "Statement": [ { "Effect": "Allow", "Principal": { "AWS": "arn:${AWS::Partition}:sts::${AWS::AccountId}:assumed-role/${SnowflakeAPIGatewayExecutionRole}/snowflake" }, "Action": "execute-api:Invoke", "Resource": "${resourceArn}", "Condition": { ${vpcCondition} } }]}'
         - resourceArn: !Join [ "", [ "execute-api:/", "*" ] ]
+          vpcCondition: !If
+            - shouldCreateRegionalGateway
+            - ""
+            - !Sub '"StringEquals": { "aws:sourceVpc": "${snowflakeVpcId}"}'
       EndpointConfiguration:
         Types:
-          - REGIONAL
+          - !Ref apiGatewayType
   SnowflakeApiGatewayDeployment:
     Type: "AWS::ApiGateway::Deployment"
     DependsOn:
@@ -353,7 +375,7 @@ Resources:
     Properties:
       RestApiId: !Ref SnowflakeApiGateway
       ParentId: !Ref RootApiResource
-      PathPart: deleteendpointconfig   
+      PathPart: deleteendpointconfig
   CreateEndpointApiResource:
     Type: 'AWS::ApiGateway::Resource'
     Properties:
@@ -365,7 +387,7 @@ Resources:
     Properties:
       RestApiId: !Ref SnowflakeApiGateway
       ParentId: !Ref RootApiResource
-      PathPart: createendpointconfig    
+      PathPart: createendpointconfig
   DescribeModelApiResource:
     Type: 'AWS::ApiGateway::Resource'
     Properties:
@@ -383,7 +405,7 @@ Resources:
     Properties:
       RestApiId: !Ref SnowflakeApiGateway
       ParentId: !Ref RootApiResource
-      PathPart: describeendpointconfig    
+      PathPart: describeendpointconfig
   CreateModelPostMethod:
     Type: "AWS::ApiGateway::Method"
     Properties:
@@ -408,11 +430,11 @@ Resources:
         PassthroughBehavior: WHEN_NO_MATCH
         IntegrationResponses:
           - StatusCode: 200
-            SelectionPattern: '2..'            
+            SelectionPattern: '2..'
           - StatusCode: 400
-            SelectionPattern: '4..'            
+            SelectionPattern: '4..'
           - StatusCode: 500
-            SelectionPattern: '5..'        
+            SelectionPattern: '5..'
       MethodResponses:
         - StatusCode: 200
         - StatusCode: 400
@@ -482,11 +504,11 @@ Resources:
         PassthroughBehavior: WHEN_NO_MATCH
         IntegrationResponses:
           - StatusCode: 200
-            SelectionPattern: '2..'            
+            SelectionPattern: '2..'
           - StatusCode: 400
-            SelectionPattern: '4..'            
+            SelectionPattern: '4..'
           - StatusCode: 500
-            SelectionPattern: '5..'            
+            SelectionPattern: '5..'
       MethodResponses:
         - StatusCode: 200
         - StatusCode: 400
@@ -552,11 +574,11 @@ Resources:
         PassthroughBehavior: WHEN_NO_MATCH
         IntegrationResponses:
           - StatusCode: 200
-            SelectionPattern: '2..'            
+            SelectionPattern: '2..'
           - StatusCode: 400
-            SelectionPattern: '4..'            
+            SelectionPattern: '4..'
           - StatusCode: 500
-            SelectionPattern: '5..'            
+            SelectionPattern: '5..'
       MethodResponses:
         - StatusCode: 200
         - StatusCode: 400
@@ -587,11 +609,11 @@ Resources:
         PassthroughBehavior: WHEN_NO_MATCH
         IntegrationResponses:
           - StatusCode: 200
-            SelectionPattern: '2..'            
+            SelectionPattern: '2..'
           - StatusCode: 400
-            SelectionPattern: '4..'            
+            SelectionPattern: '4..'
           - StatusCode: 500
-            SelectionPattern: '5..'            
+            SelectionPattern: '5..'
       MethodResponses:
         - StatusCode: 200
         - StatusCode: 400
@@ -622,11 +644,11 @@ Resources:
         PassthroughBehavior: WHEN_NO_MATCH
         IntegrationResponses:
           - StatusCode: 200
-            SelectionPattern: '2..'            
+            SelectionPattern: '2..'
           - StatusCode: 400
-            SelectionPattern: '4..'            
+            SelectionPattern: '4..'
           - StatusCode: 500
-            SelectionPattern: '5..'            
+            SelectionPattern: '5..'
       MethodResponses:
         - StatusCode: 200
         - StatusCode: 400
@@ -692,17 +714,17 @@ Resources:
         PassthroughBehavior: WHEN_NO_MATCH
         IntegrationResponses:
           - StatusCode: 200
-            SelectionPattern: '2..'            
+            SelectionPattern: '2..'
           - StatusCode: 400
-            SelectionPattern: '4..'            
+            SelectionPattern: '4..'
           - StatusCode: 500
-            SelectionPattern: '5..'            
+            SelectionPattern: '5..'
       MethodResponses:
         - StatusCode: 200
         - StatusCode: 400
         - StatusCode: 500
       ResourceId: !Ref "DeleteEndpointConfigApiResource"
-      RestApiId: !Ref "SnowflakeApiGateway"      
+      RestApiId: !Ref "SnowflakeApiGateway"
   CopyZipsLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -832,14 +854,20 @@ Resources:
           S3BucketName: !Ref s3BucketName
           SecretArn: !Ref snowflakeSecretArn
           KmsKeyArn: !Ref kmsKeyArn
-          # Future consideration
-          VpcSecurityGroupIds: "" # !Ref vpcSecurityGroupIds
-          VpcSubnetIds: "" # !Ref vpcSubnetIds
+          VpcSecurityGroupIds: !Ref vpcSecurityGroupIds
+          VpcSubnetIds: !Ref vpcSubnetIds
           SnowflakeRole: !Ref snowflakeRole
           StackName: !Sub "${AWS::StackName}"
           DatabaseName: !Ref snowflakeDatabaseName
           SchemaName: !Ref snowflakeSchemaName
           SnowflakeResourceSuffix: !Ref snowflakeResourceSuffix
+          ApiGatewayType: !Ref apiGatewayType
+      VpcConfig:
+        Fn::If:
+          - isVPCConfigNotPresent
+          - { Ref: "AWS::NoValue" }
+          - SecurityGroupIds: !Split [",", !Ref vpcSecurityGroupIds]
+            SubnetIds: !Split [",", !Ref vpcSubnetIds]
   SnowflakeResources:
     Type: Custom::SnowflakeResources
     DependsOn:

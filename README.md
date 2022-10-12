@@ -43,6 +43,46 @@ If you click *Plaintext* you should see something like this:
 5. Leave the default encryption key selected and click next.
 6. Give a name to your Secret and click next (for example: mySecret).
 
+
+## Private network setup
+The setup below is needed if the integration infrastructure is supposed to be deployed inside a VPC.
+
+### VPC setup
+Sample VPC setup cloudformation template: [vpc-setup.yml](sample-templates/vpc-setup.yml)
+
+
+### Snowflake Privatelink config and VPC id
+Get Snowflake PrivateLink configurations using the following command
+
+```
+select SYSTEM$GET_PRIVATELINK_CONFIG();
+```
+
+Response output will have the following details:
+* `privatelink-account-name`
+* `privatelink-internal-stage`
+* `privatelink-account-url`
+* `privatelink-ocsp-url`
+* `privatelink-vpce-id`
+
+The resources above are needed for private link setup. See [Private Link setup](#private-link-setup).
+
+
+Get Snowflake VPC ID using the following command
+```
+select SYSTEM$GET_SNOWFLAKE_PLATFORM_INFO();
+```
+
+Response output response will have
+* `snowflake-vpc-id`
+
+This attribute is named as `snowflakeVpcId` in the cfn template parameters.
+
+### Private Link setup
+Sample PrivateLink setup cloudformation template: [private-link-setup.yml](sample-templates/private-link-setup.yml)
+
+**Note**: The [vpc-setup.yml](sample-templates/vpc-setup.yml) and [private-link-setup.yml](sample-templates/private-link-setup.yml) are sample representative templates. It may not have everything for your usecase.
+
 # Creation of the stack
 
 ## CloudFormation Parameters
@@ -57,11 +97,17 @@ These parameters are needed to create the stack.
 * snowflakeSchemaName: "Snowflake Database Schema in which external functions will be created"
 * apiGatewayName (Optional): "API Gateway name"
 * apiGatewayStageName (Optional): "API Gateway stage name"
+* apiGatewayType (Optional): "API Gateway type, it can be PRIVATE or REGIONAL. If not provided, then it defaults to REGIONAL "
 * snowflakeResourceSuffix (Optional): "Suffix for resources created in Snowflake. This suffix will be added to all function names created in the database schema."
+
+Following parameters are required if the setup needs to be inside a VPC.
+* snowflakeVpcId: "Snowflake VPC ID. Required if setup is to be done inside VPC"
+* vpcSecurityGroupIds: "List of security group ids"
+* vpcSubnetIds: "List of VPC subnet ids"
 
 ## Create the stack via the CLI
 
-You can create the stack via CLI by using these command:
+You can create the stack via CLI by using these commands:
 
 ```
 aws cloudformation create-stack \
@@ -77,6 +123,29 @@ ParameterKey=snowflakeDatabaseName,ParameterValue=SNOWFLAKE_DATABASE_NAME \
 ParameterKey=snowflakeSchemaName,ParameterValue=SNOWFLAKE_SCHEMA_NAME \
 ParameterKey=apiGatewayName,ParameterValue=API_GW_NAME \
 ParameterKey=apiGatewayStageName,ParameterValue=API_GW_STAGE_NAME \
+ParameterKey=snowflakeResourceSuffix,ParameterValue=SUFFIX
+```
+
+If you want to create the setup in a VPC, use the below command:
+
+```
+aws cloudformation create-stack \
+--region YOUR_REGION \
+--stack-name myteststack \
+--template-body file://path/to/customer-stack.yml \
+--capabilities CAPABILITY_NAMED_IAM \
+--parameters ParameterKey=s3BucketName,ParameterValue=S3_BUCKET_NAME \
+ParameterKey=snowflakeSecretArn,ParameterValue=CREDENTIALS_SECRET_ARN \
+ParameterKey=kmsKeyArn,ParameterValue=KMS_KEY_ARN \
+ParameterKey=snowflakeRole,ParameterValue=SNOWFLAKE_ROLE \
+ParameterKey=snowflakeDatabaseName,ParameterValue=SNOWFLAKE_DATABASE_NAME \
+ParameterKey=snowflakeSchemaName,ParameterValue=SNOWFLAKE_SCHEMA_NAME \
+ParameterKey=vpcSecurityGroupIds,ParameterValue=SECURITY_GROUPS \
+ParameterKey=vpcSubnetIds,ParameterValue=VPC_SUBNETS \
+ParameterKey=apiGatewayName,ParameterValue=API_GW_NAME \
+ParameterKey=apiGatewayStageName,ParameterValue=API_GW_STAGE_NAME \
+ParameterKey=apiGatewayType,ParameterValue=API_GW_TYPE \
+ParameterKey=snowflakeVpcId,ParameterValue=SNOWFLAKE_VPC_ID \
 ParameterKey=snowflakeResourceSuffix,ParameterValue=SUFFIX
 ```
 
